@@ -1,0 +1,9 @@
+You are an expert React 18 and TypeScript developer. 
+Project Context: We are building a Progressive Web App (PWA) and Admin Dashboard for "Alcaldía Auxiliar de Zona 18" to manage citizen incident reports.
+Tech Stack: React, Vite, TypeScript, Tailwind CSS, shadcn/ui.
+Rules:
+1. Always use TypeScript and define interfaces for all props and state.
+2. Use Tailwind CSS for all styling. Ensure mobile-first responsiveness.
+3. Write clean, modular, and reusable components.
+4. Add JSDoc comments above components to generate technical documentation for a university thesis.
+5. Do not invent unrequested features.

@@ -1,0 +1,217 @@
+import { useRef } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { ImagePlus } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+import {
+  INCIDENT_CATEGORIES,
+  incidentFormSchema,
+  type IncidentFormValues,
+  type IncidentSubmissionPayload,
+} from "@/components/citizen/incident-form.schema"
+
+/**
+ * Mobile-first form for citizens to report municipal incidents.
+ *
+ * Collects a title, description, category, and optional photo through
+ * validated fields powered by React Hook Form and Zod. On successful
+ * submission, the normalized payload is emitted to the console for
+ * development and thesis documentation; backend integration is deferred.
+ *
+ * @component
+ * @module Citizen
+ * @returns {JSX.Element} Validated incident report form for the Citizen PWA module.
+ */
+export function IncidentSubmissionForm() {
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  const form = useForm<IncidentFormValues>({
+    resolver: zodResolver(incidentFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: undefined,
+      photo: undefined,
+    },
+  })
+
+  const handleSubmit = (values: IncidentFormValues) => {
+    const payload: IncidentSubmissionPayload = {
+      title: values.title,
+      description: values.description,
+      category: values.category,
+      photo: values.photo ?? null,
+    }
+
+    console.log("Incident submission payload:", payload)
+  }
+
+  return (
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-8"
+        noValidate
+      >
+        <header className="space-y-1">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Reportar incidente
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Describe el problema para que la Alcaldía Auxiliar de Zona 18 pueda
+            atenderlo.
+          </p>
+        </header>
+
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Título</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Ej. Fuga de agua en la calle principal"
+                  autoComplete="off"
+                  className="h-11 text-base sm:h-10 sm:text-sm"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Descripción</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Detalla qué ocurre, dónde y desde cuándo..."
+                  rows={5}
+                  className="min-h-32 text-base sm:min-h-28 sm:text-sm"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Categoría</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
+                    <SelectValue placeholder="Selecciona una categoría" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {INCIDENT_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="photo"
+          render={({ field: { onChange, ref, value, ...field } }) => (
+            <FormItem>
+              <FormLabel>Fotografía (opcional)</FormLabel>
+              <FormControl>
+                <div className="space-y-3">
+                  <input
+                    {...field}
+                    ref={(element) => {
+                      ref(element)
+                      photoInputRef.current = element
+                    }}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      onChange(file)
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className={cn(
+                      "flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-muted/30 px-4 py-8 text-center transition-colors",
+                      "hover:border-ring hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                      "active:bg-muted/60"
+                    )}
+                  >
+                    <ImagePlus
+                      className="size-8 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="text-sm font-medium text-foreground">
+                      Toca para tomar o seleccionar una foto
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      JPG, PNG o WEBP
+                    </span>
+                  </button>
+                  {value instanceof File && (
+                    <p className="truncate text-sm text-muted-foreground">
+                      Archivo seleccionado:{" "}
+                      <span className="font-medium text-foreground">
+                        {value.name}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button
+          type="submit"
+          size="lg"
+          className="h-12 w-full text-base sm:h-11 sm:text-sm"
+          disabled={form.formState.isSubmitting}
+        >
+          Enviar reporte
+        </Button>
+      </form>
+    </Form>
+  )
+}
