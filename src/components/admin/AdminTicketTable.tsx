@@ -1,4 +1,15 @@
+import { useEffect, useMemo, useState } from "react"
+
+import { ResolveIncidentDialog } from "@/components/admin/ResolveIncidentDialog"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -8,8 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-type IncidentStatus = "Pendiente" | "En Progreso" | "Resuelto"
+import { supabase } from "@/lib/supabaseClient"
+import type { IncidentStatus } from "@/lib/supabase.types"
 
 interface AdminIncident {
   id: string
@@ -17,31 +28,8 @@ interface AdminIncident {
   category: string
   status: IncidentStatus
   created_at: string
+  image_url: string | null
 }
-
-const MOCK_INCIDENTS: AdminIncident[] = [
-  {
-    id: "INC-2026-001",
-    title: "Fuga de agua en colonia Alameda",
-    category: "Agua",
-    status: "Pendiente",
-    created_at: "2026-07-09 08:15",
-  },
-  {
-    id: "INC-2026-002",
-    title: "Luminaria dañada en Avenida Central",
-    category: "Iluminación",
-    status: "En Progreso",
-    created_at: "2026-07-09 10:42",
-  },
-  {
-    id: "INC-2026-003",
-    title: "Bache profundo frente al mercado zonal",
-    category: "Infraestructura",
-    status: "Resuelto",
-    created_at: "2026-07-08 16:05",
-  },
-]
 
 const STATUS_BADGE_STYLES: Record<IncidentStatus, string> = {
   Pendiente:
@@ -55,14 +43,151 @@ const STATUS_BADGE_STYLES: Record<IncidentStatus, string> = {
 /**
  * Prototype table for municipality staff to quickly review incoming incidents.
  *
- * Displays a typed mock dataset with key metadata and color-coded status badges
- * to communicate operational urgency within the Admin Dashboard module.
+ * Displays live Supabase incident records with key metadata, color-coded status
+ * badges, and admin actions to progress or close tickets.
  *
  * @component
  * @module Admin
  * @returns {JSX.Element} Incident management table with status visualization.
  */
 export function AdminTicketTable() {
+  const [incidents, setIncidents] = useState<AdminIncident[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [selectedStatuses, setSelectedStatuses] = useState<
+    Record<string, IncidentStatus>
+  >({})
+  const [resolvingIncident, setResolvingIncident] = useState<AdminIncident | null>(
+    null
+  )
+  const [isResolving, setIsResolving] = useState(false)
+
+  const totalCount = incidents.length
+
+  const incidentById = useMemo(() => {
+    return incidents.reduce<Record<string, AdminIncident>>((accumulator, incident) => {
+      accumulator[incident.id] = incident
+      return accumulator
+    }, {})
+  }, [incidents])
+
+  const loadIncidents = async () => {
+    const { data, error } = await supabase
+      .from("incidents")
+      .select("id,title,category,status,created_at,image_url")
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      setErrorMessage(error.message)
+      setIsLoading(false)
+      return
+    }
+
+    const records = (data ?? []) as AdminIncident[]
+    setIncidents(records)
+    setSelectedStatuses(
+      records.reduce<Record<string, IncidentStatus>>((accumulator, incident) => {
+        accumulator[incident.id] = incident.status
+        return accumulator
+      }, {})
+    )
+    setErrorMessage(null)
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
+    const bootstrapTimer = window.setTimeout(() => {
+      void loadIncidents()
+    }, 0)
+
+    return () => window.clearTimeout(bootstrapTimer)
+  }, [])
+
+  const updateStatus = async (params: {
+    incidentId: string
+    status: IncidentStatus
+    isPublic?: boolean
+    resolutionSummary?: string | null
+  }) => {
+    const payload =
+      params.status === "Resuelto"
+        ? {
+            status: params.status,
+            resolved_at: new Date().toISOString(),
+            is_public: params.isPublic ?? false,
+            resolution_summary: params.resolutionSummary ?? null,
+          }
+        : {
+            status: params.status,
+            resolved_at: null,
+            is_public: false,
+            resolution_summary: null,
+          }
+
+    const { error } = await supabase.from("incidents").update(payload).eq("id", params.incidentId)
+
+    if (error) {
+      setErrorMessage(error.message)
+      return false
+    }
+
+    setIncidents((previous) =>
+      previous.map((incident) =>
+        incident.id === params.incidentId
+          ? { ...incident, status: params.status }
+          : incident
+      )
+    )
+    setSelectedStatuses((previous) => ({
+      ...previous,
+      [params.incidentId]: params.status,
+    }))
+    return true
+  }
+
+  const handleApplyStatus = async (incidentId: string) => {
+    const selectedStatus = selectedStatuses[incidentId]
+
+    if (!selectedStatus) {
+      return
+    }
+
+    if (selectedStatus === "Resuelto") {
+      const incident = incidentById[incidentId]
+      if (incident) {
+        setResolvingIncident(incident)
+      }
+      return
+    }
+
+    await updateStatus({
+      incidentId,
+      status: selectedStatus,
+    })
+  }
+
+  const handleResolveSubmit = async (payload: {
+    isPublic: boolean
+    resolutionSummary: string | null
+  }) => {
+    if (!resolvingIncident) {
+      return
+    }
+
+    setIsResolving(true)
+    const didSucceed = await updateStatus({
+      incidentId: resolvingIncident.id,
+      status: "Resuelto",
+      isPublic: payload.isPublic,
+      resolutionSummary: payload.resolutionSummary,
+    })
+    setIsResolving(false)
+
+    if (didSucceed) {
+      setResolvingIncident(null)
+    }
+  }
+
   return (
     <section className="mx-auto w-full max-w-6xl space-y-4 px-4 py-6 sm:px-6 sm:py-8">
       <header className="space-y-1">
@@ -77,7 +202,7 @@ export function AdminTicketTable() {
       <div className="rounded-lg border bg-card shadow-sm">
         <Table>
           <TableCaption>
-            Total de incidencias simuladas: {MOCK_INCIDENTS.length}
+            Total de incidencias registradas: {totalCount}
           </TableCaption>
           <TableHeader>
             <TableRow>
@@ -86,10 +211,37 @@ export function AdminTicketTable() {
               <TableHead>Categoría</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Creado</TableHead>
+              <TableHead className="text-right">Acción</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {MOCK_INCIDENTS.map((incident) => (
+            {isLoading && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
+                  Cargando incidencias...
+                </TableCell>
+              </TableRow>
+            )}
+
+            {!isLoading && errorMessage && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-destructive">
+                  {errorMessage}
+                </TableCell>
+              </TableRow>
+            )}
+
+            {!isLoading && !errorMessage && incidents.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
+                  No hay incidencias para mostrar.
+                </TableCell>
+              </TableRow>
+            )}
+
+            {!isLoading &&
+              !errorMessage &&
+              incidents.map((incident) => (
               <TableRow key={incident.id}>
                 <TableCell className="font-medium">{incident.id}</TableCell>
                 <TableCell className="max-w-xs whitespace-normal">
@@ -105,11 +257,51 @@ export function AdminTicketTable() {
                   </Badge>
                 </TableCell>
                 <TableCell>{incident.created_at}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Select
+                      value={selectedStatuses[incident.id]}
+                      onValueChange={(value) =>
+                        setSelectedStatuses((previous) => ({
+                          ...previous,
+                          [incident.id]: value as IncidentStatus,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pendiente">Pendiente</SelectItem>
+                        <SelectItem value="En Progreso">En Progreso</SelectItem>
+                        <SelectItem value="Resuelto">Resuelto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      onClick={() => void handleApplyStatus(incident.id)}
+                    >
+                      Guardar
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+
+      <ResolveIncidentDialog
+        isOpen={!!resolvingIncident}
+        incidentTitle={resolvingIncident?.title ?? ""}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setResolvingIncident(null)
+          }
+        }}
+        onSubmit={handleResolveSubmit}
+        isSubmitting={isResolving}
+      />
     </section>
   )
 }

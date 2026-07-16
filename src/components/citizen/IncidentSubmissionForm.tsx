@@ -1,4 +1,4 @@
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ImagePlus } from "lucide-react"
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabaseClient"
 import {
   INCIDENT_CATEGORIES,
   incidentFormSchema,
@@ -29,20 +30,27 @@ import {
   type IncidentSubmissionPayload,
 } from "@/components/citizen/incident-form.schema"
 
+interface IncidentSubmissionFormProps {
+  userId: string
+}
+
 /**
  * Mobile-first form for citizens to report municipal incidents.
  *
  * Collects a title, description, category, and optional photo through
  * validated fields powered by React Hook Form and Zod. On successful
- * submission, the normalized payload is emitted to the console for
- * development and thesis documentation; backend integration is deferred.
+ * submission, photos are uploaded to Supabase Storage and incident rows are
+ * written to the database.
  *
  * @component
  * @module Citizen
  * @returns {JSX.Element} Validated incident report form for the Citizen PWA module.
  */
-export function IncidentSubmissionForm() {
+export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) {
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const [photoInputKey, setPhotoInputKey] = useState(0)
+  const [submitFeedback, setSubmitFeedback] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const form = useForm<IncidentFormValues>({
     resolver: zodResolver(incidentFormSchema),
@@ -54,7 +62,10 @@ export function IncidentSubmissionForm() {
     },
   })
 
-  const handleSubmit = (values: IncidentFormValues) => {
+  const handleSubmit = async (values: IncidentFormValues) => {
+    setSubmitFeedback(null)
+    setSubmitError(null)
+
     const payload: IncidentSubmissionPayload = {
       title: values.title,
       description: values.description,
@@ -62,7 +73,60 @@ export function IncidentSubmissionForm() {
       photo: values.photo ?? null,
     }
 
-    console.log("Incident submission payload:", payload)
+    let imageUrl: string | null = null
+
+    if (payload.photo) {
+      const fileExtension = payload.photo.name.split(".").pop() ?? "jpg"
+      const baseName = payload.photo.name.replace(/\.[^/.]+$/, "")
+      const normalizedFileName = baseName
+        .trim()
+        .replace(/\s+/g, "-")
+        .toLowerCase()
+      const filePath = `${userId}/${payload.photo.lastModified}-${normalizedFileName}.${fileExtension}`
+
+      const { error: uploadError } = await supabase.storage
+        .from("incident-photos")
+        .upload(filePath, payload.photo, {
+          upsert: false,
+        })
+
+      if (uploadError) {
+        setSubmitError(uploadError.message)
+        return
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("incident-photos")
+        .getPublicUrl(filePath)
+
+      imageUrl = publicUrlData.publicUrl
+    }
+
+    const { error: insertError } = await supabase.from("incidents").insert({
+      user_id: userId,
+      title: payload.title,
+      description: payload.description,
+      category: payload.category,
+      status: "Pendiente",
+      image_url: imageUrl,
+      is_public: false,
+      resolution_summary: null,
+      resolved_at: null,
+    })
+
+    if (insertError) {
+      setSubmitError(insertError.message)
+      return
+    }
+
+    form.reset({
+      title: "",
+      description: "",
+      category: undefined,
+      photo: undefined,
+    })
+    setPhotoInputKey((previous) => previous + 1)
+    setSubmitFeedback("Incidencia registrada correctamente.")
   }
 
   return (
@@ -154,6 +218,7 @@ export function IncidentSubmissionForm() {
               <FormControl>
                 <div className="space-y-3">
                   <input
+                    key={photoInputKey}
                     {...field}
                     ref={(element) => {
                       ref(element)
@@ -211,6 +276,13 @@ export function IncidentSubmissionForm() {
         >
           Enviar reporte
         </Button>
+
+        {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+        {submitFeedback && (
+          <p className="text-sm text-emerald-700 dark:text-emerald-300">
+            {submitFeedback}
+          </p>
+        )}
       </form>
     </Form>
   )
