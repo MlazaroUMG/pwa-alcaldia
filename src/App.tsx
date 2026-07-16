@@ -66,9 +66,9 @@ function App() {
         return
       }
 
-      const profileRole = (data as { role?: UserRole } | null)?.role
+      const profileRole = data?.role
 
-      if (!profileRole) {
+      if (profileRole !== "admin" && profileRole !== "citizen") {
         setRoleError("No se encontró un perfil con rol asignado para este usuario.")
         setRole(null)
         return

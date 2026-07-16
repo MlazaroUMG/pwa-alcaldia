@@ -7,21 +7,25 @@ export interface Database {
       profiles: {
         Row: {
           id: string
-          role: UserRole
+          role: string
+          created_at: string
         }
         Insert: {
           id: string
-          role?: UserRole
+          role?: string
+          created_at?: string
         }
         Update: {
           id?: string
-          role?: UserRole
+          role?: string
+          created_at?: string
         }
+        Relationships: []
       }
       incidents: {
         Row: {
           id: string
-          user_id: string
+          user_id: string | null
           title: string
           description: string
           category: string
@@ -34,7 +38,7 @@ export interface Database {
         }
         Insert: {
           id?: string
-          user_id: string
+          user_id?: string | null
           title: string
           description: string
           category: string
@@ -47,7 +51,7 @@ export interface Database {
         }
         Update: {
           id?: string
-          user_id?: string
+          user_id?: string | null
           title?: string
           description?: string
           category?: string
@@ -58,7 +62,12 @@ export interface Database {
           resolution_summary?: string | null
           resolved_at?: string | null
         }
+        Relationships: []
       }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }
