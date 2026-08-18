@@ -1,20 +1,18 @@
 import { useEffect, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
 
-import { IncidentSubmissionForm } from "@/components/citizen/IncidentSubmissionForm"
-import { AdminTicketTable } from "@/components/admin/AdminTicketTable"
 import { LoginForm } from "@/components/auth/LoginForm"
 import { RegisterForm } from "@/components/auth/RegisterForm"
-import { CommunityBoard } from "@/components/citizen/CommunityBoard"
-import { MainHeader } from "@/components/layout/MainHeader"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { AdminLayout } from "@/components/layout/AdminLayout"
+import { CitizenLayout } from "@/components/layout/CitizenLayout"
+import { ThemeProvider } from "@/components/layout/ThemeProvider"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { supabase } from "@/lib/supabaseClient"
 import type { UserRole } from "@/lib/supabase.types"
 import "./App.css"
@@ -86,103 +84,68 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <MainHeader />
+    <ThemeProvider>
+      <TooltipProvider>
+        <div className="min-h-screen bg-background">
+          {isLoadingSession && (
+            <main className="flex min-h-screen items-center justify-center px-4">
+              <p className="text-sm text-muted-foreground">Validando sesión...</p>
+            </main>
+          )}
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        {isLoadingSession && (
-          <p className="text-sm text-muted-foreground">Validando sesión...</p>
-        )}
-
-        {!isLoadingSession && !session && (
-          <section className="mx-auto w-full max-w-lg space-y-4 rounded-lg border bg-card p-4 shadow-sm sm:p-6">
-            <header className="space-y-1">
-              <h2 className="text-xl font-semibold">Acceso al sistema</h2>
-              <p className="text-sm text-muted-foreground">
-                Inicia sesión o crea una cuenta para reportar incidencias.
-              </p>
-            </header>
-
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
-                <TabsTrigger value="register">Registro</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="login" className="mt-4">
-                <LoginForm />
-              </TabsContent>
-              <TabsContent value="register" className="mt-4">
-                <RegisterForm />
-              </TabsContent>
-            </Tabs>
-          </section>
-        )}
-
-        {!isLoadingSession && session && (
-          <section className="space-y-4">
-            <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Sesión activa: <span className="font-medium text-foreground">{session.user.email}</span>
+          {!isLoadingSession && !session && (
+            <main className="flex min-h-screen items-center justify-center px-4">
+              <section className="w-full max-w-md rounded-2xl border bg-card p-6 text-foreground shadow-lg sm:p-8">
+                <h2 className="mb-4 text-center text-2xl font-bold text-foreground">
+                  Acceso al Sistema
+                </h2>
+                <img
+                  src="/logo.png"
+                  alt="Alcaldía Auxiliar Zona 18"
+                  className="mx-auto mb-4 h-20 w-auto"
+                />
+                <p className="mb-4 text-center text-sm text-foreground/85">
+                  Inicia sesión o crea una cuenta para reportar incidencias.
                 </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Rol:</span>
-                  <Badge variant="outline" className="capitalize">
-                    {role ?? "sin perfil"}
-                  </Badge>
-                </div>
-              </div>
 
-              <Button variant="outline" onClick={() => void handleSignOut()}>
-                Cerrar sesión
-              </Button>
-            </div>
+                <Tabs defaultValue="login" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
+                    <TabsTrigger value="register">Registro</TabsTrigger>
+                  </TabsList>
 
-            {roleError && (
-              <p className="text-sm text-destructive">
-                {roleError}
-              </p>
-            )}
+                  <TabsContent value="login" className="mt-4">
+                    <LoginForm />
+                  </TabsContent>
+                  <TabsContent value="register" className="mt-4">
+                    <RegisterForm />
+                  </TabsContent>
+                </Tabs>
+              </section>
+            </main>
+          )}
 
-            {role === "citizen" && (
-              <Tabs defaultValue="citizen-form" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:w-fit">
-                  <TabsTrigger value="citizen-form">Reportar incidente</TabsTrigger>
-                  <TabsTrigger value="community-board">Community Board</TabsTrigger>
-                </TabsList>
-
-                <TabsContent
-                  value="citizen-form"
-                  className="mt-4 rounded-lg border bg-card shadow-sm"
-                >
-                  <IncidentSubmissionForm userId={session.user.id} />
-                </TabsContent>
-                <TabsContent value="community-board" className="mt-4">
-                  <CommunityBoard />
-                </TabsContent>
-              </Tabs>
-            )}
-
-            {role === "admin" && (
-              <Tabs defaultValue="admin-dashboard" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:w-fit">
-                  <TabsTrigger value="admin-dashboard">Dashboard Admin</TabsTrigger>
-                  <TabsTrigger value="community-board">Community Board</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="admin-dashboard" className="mt-4">
-                  <AdminTicketTable />
-                </TabsContent>
-                <TabsContent value="community-board" className="mt-4">
-                  <CommunityBoard />
-                </TabsContent>
-              </Tabs>
-            )}
-          </section>
-        )}
-      </main>
-    </div>
+          {!isLoadingSession && session && (
+            <>
+              {roleError && <p className="p-4 text-sm text-destructive">{roleError}</p>}
+              {!roleError && role === "citizen" && (
+                <CitizenLayout
+                  userId={session.user.id}
+                  email={session.user.email}
+                  onSignOut={() => void handleSignOut()}
+                />
+              )}
+              {!roleError && role === "admin" && (
+                <AdminLayout
+                  email={session.user.email}
+                  onSignOut={() => void handleSignOut()}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </TooltipProvider>
+    </ThemeProvider>
   )
 }
 
