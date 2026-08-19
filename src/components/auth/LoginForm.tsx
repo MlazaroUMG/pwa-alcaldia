@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
+import { Globe } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,6 +21,7 @@ export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -41,8 +43,42 @@ export function LoginForm() {
     setIsSubmitting(false)
   }
 
+  const handleGoogleSignIn = async () => {
+    setErrorMessage(null)
+    setIsGoogleSubmitting(true)
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    })
+
+    if (error) {
+      setErrorMessage(error.message)
+      setIsGoogleSubmitting(false)
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 w-full border-primary/30 bg-background text-foreground hover:bg-muted"
+        onClick={handleGoogleSignIn}
+        disabled={isSubmitting || isGoogleSubmitting}
+      >
+        <Globe className="size-4" />
+        {isGoogleSubmitting ? "Conectando con Google..." : "Continuar con Google"}
+      </Button>
+
+      <div className="flex items-center gap-3 text-xs font-medium text-foreground/80">
+        <span className="h-px flex-1 bg-border" />
+        <span>o ingresa con correo</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="login-email">Correo electrónico</Label>
         <Input
@@ -69,7 +105,12 @@ export function LoginForm() {
 
       {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
 
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button
+        type="submit"
+        variant="secondary"
+        className="h-11 w-full bg-muni-green text-[#153d0c] hover:bg-muni-green/90"
+        disabled={isSubmitting}
+      >
         {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
       </Button>
     </form>

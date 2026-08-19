@@ -23,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabaseClient"
+import { LocationPicker } from "@/components/citizen/LocationPicker"
 import {
   INCIDENT_CATEGORIES,
   incidentFormSchema,
@@ -59,8 +60,13 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
       description: "",
       category: undefined,
       photo: undefined,
+      latitude: undefined,
+      longitude: undefined,
     },
   })
+
+  const latitude = form.watch("latitude")
+  const longitude = form.watch("longitude")
 
   const handleSubmit = async (values: IncidentFormValues) => {
     setSubmitFeedback(null)
@@ -71,6 +77,8 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
       description: values.description,
       category: values.category,
       photo: values.photo ?? null,
+      latitude: values.latitude,
+      longitude: values.longitude,
     }
 
     let imageUrl: string | null = null
@@ -112,6 +120,8 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
       is_public: false,
       resolution_summary: null,
       resolved_at: null,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
     })
 
     if (insertError) {
@@ -124,6 +134,8 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
       description: "",
       category: undefined,
       photo: undefined,
+      latitude: undefined,
+      longitude: undefined,
     })
     setPhotoInputKey((previous) => previous + 1)
     setSubmitFeedback("Incidencia registrada correctamente.")
@@ -268,10 +280,38 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="latitude"
+          render={() => (
+            <FormItem>
+              <FormLabel>Ubicación del incidente</FormLabel>
+              <FormControl>
+                <LocationPicker
+                  value={
+                    latitude !== undefined && longitude !== undefined
+                      ? { latitude, longitude }
+                      : null
+                  }
+                  onChange={(coordinates) => {
+                    form.setValue("latitude", coordinates.latitude, {
+                      shouldValidate: true,
+                    })
+                    form.setValue("longitude", coordinates.longitude, {
+                      shouldValidate: true,
+                    })
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button
           type="submit"
           size="lg"
-          className="h-12 w-full text-base sm:h-11 sm:text-sm"
+          className="h-12 w-full bg-muni-green text-[#153d0c] hover:bg-muni-green/90 sm:h-11 sm:text-sm"
           disabled={form.formState.isSubmitting}
         >
           Enviar reporte

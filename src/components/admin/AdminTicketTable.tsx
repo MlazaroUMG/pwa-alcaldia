@@ -1,50 +1,30 @@
 import { useEffect, useMemo, useState } from "react"
 
 import { ResolveIncidentDialog } from "@/components/admin/ResolveIncidentDialog"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { SubmitterProfileDialog } from "@/components/admin/SubmitterProfileDialog"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  getTicketColumns,
+  type AdminIncident,
+} from "@/components/admin/ticket-columns"
+import { LocationPreviewMap } from "@/components/citizen/LocationPreviewMap"
 import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { DataTable } from "@/components/ui/data-table"
 import { supabase } from "@/lib/supabaseClient"
 import type { IncidentStatus } from "@/lib/supabase.types"
 
-interface AdminIncident {
-  id: string
-  title: string
-  category: string
-  status: IncidentStatus
-  created_at: string
-  image_url: string | null
-}
-
-const STATUS_BADGE_STYLES: Record<IncidentStatus, string> = {
-  Pendiente:
-    "border-red-200 bg-red-100 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200",
-  "En Progreso":
-    "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
-  Resuelto:
-    "border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
-}
-
 /**
- * Prototype table for municipality staff to quickly review incoming incidents.
+ * Incident management table for municipality staff.
  *
- * Displays live Supabase incident records with key metadata, color-coded status
- * badges, and admin actions to progress or close tickets.
+ * Displays live Supabase incident records with search, pagination, color-coded
+ * status badges, citizen profile lookup, location preview, and admin actions
+ * to progress or close tickets. Status-change and resolution logic is
+ * unchanged from the original prototype table; only the rendering shell was
+ * migrated to a reusable, searchable/paginated data table.
  *
  * @component
  * @module Admin
@@ -61,8 +41,8 @@ export function AdminTicketTable() {
     null
   )
   const [isResolving, setIsResolving] = useState(false)
-
-  const totalCount = incidents.length
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
+  const [viewingLocation, setViewingLocation] = useState<AdminIncident | null>(null)
 
   const incidentById = useMemo(() => {
     return incidents.reduce<Record<string, AdminIncident>>((accumulator, incident) => {
@@ -74,7 +54,7 @@ export function AdminTicketTable() {
   const loadIncidents = async () => {
     const { data, error } = await supabase
       .from("incidents")
-      .select("id,title,category,status,created_at,image_url")
+      .select("id,title,category,status,created_at,image_url,user_id,latitude,longitude")
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -188,108 +168,41 @@ export function AdminTicketTable() {
     }
   }
 
+  const columns = useMemo(
+    () =>
+      getTicketColumns({
+        selectedStatuses,
+        onStatusSelect: (incidentId, status) =>
+          setSelectedStatuses((previous) => ({ ...previous, [incidentId]: status })),
+        onApplyStatus: (incidentId) => void handleApplyStatus(incidentId),
+        onViewProfile: (userId) => setSelectedProfileId(userId),
+        onViewLocation: (incident) => setViewingLocation(incident),
+      }),
+    // Handlers close over state that changes each render (selectedStatuses,
+    // incidentById); recomputing columns keeps the Select values in sync.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedStatuses, incidents]
+  )
+
   return (
-    <section className="mx-auto w-full max-w-6xl space-y-4 px-4 py-6 sm:px-6 sm:py-8">
+    <section className="w-full min-w-0 space-y-4 p-4 sm:p-6">
       <header className="space-y-1">
         <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-          Bandeja de incidencias
+          Gestión de incidencias
         </h2>
         <p className="text-sm text-muted-foreground">
-          Vista inicial para el equipo administrativo de la municipalidad.
+          Prioriza, actualiza y resuelve los reportes ciudadanos activos.
         </p>
       </header>
 
-      <div className="rounded-lg border bg-card shadow-sm">
-        <Table>
-          <TableCaption>
-            Total de incidencias registradas: {totalCount}
-          </TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Título</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Creado</TableHead>
-              <TableHead className="text-right">Acción</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                  Cargando incidencias...
-                </TableCell>
-              </TableRow>
-            )}
-
-            {!isLoading && errorMessage && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-destructive">
-                  {errorMessage}
-                </TableCell>
-              </TableRow>
-            )}
-
-            {!isLoading && !errorMessage && incidents.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                  No hay incidencias para mostrar.
-                </TableCell>
-              </TableRow>
-            )}
-
-            {!isLoading &&
-              !errorMessage &&
-              incidents.map((incident) => (
-              <TableRow key={incident.id}>
-                <TableCell className="font-medium">{incident.id}</TableCell>
-                <TableCell className="max-w-xs whitespace-normal">
-                  {incident.title}
-                </TableCell>
-                <TableCell>{incident.category}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant="outline"
-                    className={STATUS_BADGE_STYLES[incident.status]}
-                  >
-                    {incident.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>{incident.created_at}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Select
-                      value={selectedStatuses[incident.id]}
-                      onValueChange={(value) =>
-                        setSelectedStatuses((previous) => ({
-                          ...previous,
-                          [incident.id]: value as IncidentStatus,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Estado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pendiente">Pendiente</SelectItem>
-                        <SelectItem value="En Progreso">En Progreso</SelectItem>
-                        <SelectItem value="Resuelto">Resuelto</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="outline"
-                      onClick={() => void handleApplyStatus(incident.id)}
-                    >
-                      Guardar
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={incidents}
+        isLoading={isLoading}
+        errorMessage={errorMessage}
+        searchPlaceholder="Buscar por ID, título o categoría..."
+        emptyMessage="No hay incidencias para mostrar."
+      />
 
       <ResolveIncidentDialog
         isOpen={!!resolvingIncident}
@@ -302,6 +215,31 @@ export function AdminTicketTable() {
         onSubmit={handleResolveSubmit}
         isSubmitting={isResolving}
       />
+
+      <SubmitterProfileDialog
+        profileId={selectedProfileId}
+        onOpenChange={(open) => !open && setSelectedProfileId(null)}
+      />
+
+      <Dialog
+        open={viewingLocation !== null}
+        onOpenChange={(open) => !open && setViewingLocation(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ubicación de la incidencia</DialogTitle>
+          </DialogHeader>
+          {viewingLocation?.latitude !== null &&
+            viewingLocation?.latitude !== undefined &&
+            viewingLocation?.longitude !== null &&
+            viewingLocation?.longitude !== undefined && (
+              <LocationPreviewMap
+                latitude={viewingLocation.latitude}
+                longitude={viewingLocation.longitude}
+              />
+            )}
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }

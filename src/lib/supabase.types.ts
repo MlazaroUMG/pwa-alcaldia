@@ -9,16 +9,25 @@ export interface Database {
           id: string
           role: string
           created_at: string
+          dpi: string | null
+          phone: string | null
+          address: string | null
         }
         Insert: {
           id: string
           role?: string
           created_at?: string
+          dpi?: string | null
+          phone?: string | null
+          address?: string | null
         }
         Update: {
           id?: string
           role?: string
           created_at?: string
+          dpi?: string | null
+          phone?: string | null
+          address?: string | null
         }
         Relationships: []
       }
@@ -35,6 +44,8 @@ export interface Database {
           is_public: boolean
           resolution_summary: string | null
           resolved_at: string | null
+          latitude: number | null
+          longitude: number | null
         }
         Insert: {
           id?: string
@@ -48,6 +59,8 @@ export interface Database {
           is_public?: boolean
           resolution_summary?: string | null
           resolved_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
         Update: {
           id?: string
@@ -61,6 +74,8 @@ export interface Database {
           is_public?: boolean
           resolution_summary?: string | null
           resolved_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
         Relationships: []
       }

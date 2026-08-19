@@ -27,6 +27,12 @@ export const incidentFormSchema = z.object({
   photo: z
     .instanceof(File, { message: "El archivo seleccionado no es válido." })
     .optional(),
+  latitude: z.number({
+    message: "Captura la ubicación del incidente en el mapa.",
+  }),
+  longitude: z.number({
+    message: "Captura la ubicación del incidente en el mapa.",
+  }),
 })
 
 export type IncidentFormValues = z.infer<typeof incidentFormSchema>
@@ -36,4 +42,6 @@ export interface IncidentSubmissionPayload {
   description: string
   category: IncidentCategory
   photo: File | null
+  latitude: number
+  longitude: number
 }
