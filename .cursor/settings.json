@@ -2,6 +2,15 @@
   "plugins": {
     "supabase": {
       "enabled": true
+    },
+    "vercel": {
+      "enabled": true
+    },
+    "github": {
+      "enabled": true
+    },
+    "figma": {
+      "enabled": true
     }
   }
 }

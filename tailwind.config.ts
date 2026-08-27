@@ -9,6 +9,11 @@ const config: Config = {
         "muni-blue": "#1700a5",
         "muni-red": "#e14647",
         "muni-lightblue": "#72c5e4",
+        "muni-teal": "#21b876",
+        "auth-blue": "#3b82f6",
+      },
+      fontFamily: {
+        display: ["Geist Variable", "sans-serif"],
       },
     },
   },
