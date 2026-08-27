@@ -62,9 +62,9 @@ No se modifica `PlantillaEntrega.xlsx`. Esta matriz contiene valores sugeridos p
 | F-07 | Configuración | Variables seguras mediante `.env.example` y `.env` fuera del tracking | Obligatoria | Terminada y probada | 1 | Sí | `.gitignore`, `.env.example`, `git rm --cached .env` |
 | F-08 | Roles | Resolución de rol desde `profiles` para enrutar ciudadano/admin | Obligatoria | Funciona sin pruebas | 1 | No | `src/App.tsx` |
 | F-09 | Perfiles | Perfil ciudadano extendido con DPI, teléfono y dirección | Obligatoria | Funciona sin pruebas | 1 | No | `RegisterForm.tsx`, `ProfileSettingsView.tsx` |
-| F-10 | Evidencias | Documentación de configuración Google Auth y control Git | Deseable | Terminada y probada | 1 | Sí | `docs/configuracion/google-auth-supabase.md`, `docs/git-control-versiones.md` |
-| F-11 | Arquitectura | ADRs para decisiones significativas de Supabase/RLS/UI/mapas | Deseable | Terminada y probada | 1 | Sí | `docs/adr/` |
-| F-12 | Verificación | Build y lint local como controles de calidad del entorno | Obligatoria | Terminada y probada | 1 | Sí | Salida de consola `npm run build` y `npm run lint` |
+| F-10 | Ciudadano | Ajustes de perfil ciudadano con edición de contacto y apariencia | Deseable | Funciona sin pruebas | 1 | No | `ProfileSettingsView.tsx`, `CitizenLayout.tsx` |
+| F-11 | Administrativo | Ajustes de perfil administrativo con datos de cuenta y apariencia | Deseable | Funciona sin pruebas | 1 | No | `ProfileSettingsView.tsx`, `AdminLayout.tsx` |
+| F-12 | Administrativo | Dashboard administrativo fullscreen con sidebar colapsable | Obligatoria | Funciona sin pruebas | 1 | No | `AdminLayout.tsx`, vistas admin, shadcn Sidebar |
 
 ### Evidencia por función
 
@@ -73,8 +73,8 @@ No se modifica `PlantillaEntrega.xlsx`. Esta matriz contiene valores sugeridos p
 - `F-04` a `F-05`: captura del login y documentación Google Auth.
 - `F-06`: captura del archivo CI y, cuando se haga push, ejecución de GitHub Actions.
 - `F-08` a `F-09`: capturas de acceso por rol y perfil extendido.
-- `F-10` a `F-11`: capturas de documentación y ADRs.
-- `F-12`: capturas de consola con lint/build aprobados.
+- `F-10` a `F-11`: capturas de ajustes de perfil en módulo ciudadano y administrativo.
+- `F-12`: capturas del dashboard administrativo a pantalla completa y sidebar colapsado.
 
 ## PRUEBAS
 
@@ -88,15 +88,16 @@ No se modifica `PlantillaEntrega.xlsx`. Esta matriz contiene valores sugeridos p
 | T-06 | F-06 | Regresión | Ejecutar CI local equivalente | `npm run build` y `npm run lint` finalizan sin errores | Aprobada | N/A | Consola local / futuro GitHub Actions | 2026-08-18 |
 | T-07 | F-07 | Validación | Confirmar `.env` fuera del tracking | `.env` queda ignorado y no se publica; `.env.example` queda versionable | Aprobada | Crítica | `git status`, `.gitignore` | 2026-08-18 |
 | T-08 | F-08 | Funcional | Enrutamiento por rol | Admin entra al dashboard; ciudadano entra al módulo PWA | No ejecutada | Alta | Prueba manual pendiente | 2026-08-18 |
-| T-09 | F-10 | Usuario | Revisar documentación de configuración | Documento permite configurar Google Auth sin exponer secretos | Aprobada | Baja | `docs/configuracion/google-auth-supabase.md` | 2026-08-18 |
-| T-10 | F-12 | Regresión | Build de producción | `npm run build` genera `dist` sin errores | Aprobada | N/A | Salida de consola build | 2026-08-18 |
+| T-09 | F-10 | Usuario | Ajustes de perfil ciudadano | Ciudadano puede abrir ajustes, ver datos, editar teléfono/dirección y cambiar apariencia | No ejecutada | Media | Prueba visual/manual pendiente | 2026-08-18 |
+| T-10 | F-12 | Usuario | Dashboard admin fullscreen | Las vistas admin ocupan el ancho disponible y el sidebar colapsa con logo proporcionado | No ejecutada | Media | Prueba visual/manual pendiente | 2026-08-18 |
 
 ### Evidencia por prueba
 
 - Para `T-01` a `T-02`: capturas Supabase ocultando datos sensibles.
 - Para `T-04` y `T-08`: video corto o capturas del login y redirección por rol.
 - Para `T-05`: captura de configuración Google Provider cuando se habilite.
-- Para `T-06` y `T-10`: salida de consola o GitHub Actions.
+- Para `T-06`: salida de consola o GitHub Actions.
+- Para `T-09` a `T-10`: capturas de perfil ciudadano/admin, dashboard fullscreen y sidebar colapsado.
 - Para `T-07`: captura de `git status` y `.gitignore`.
 
 ## Recomendación para Jira

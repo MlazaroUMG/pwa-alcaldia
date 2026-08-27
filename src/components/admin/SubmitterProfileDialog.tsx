@@ -20,6 +20,8 @@ interface SubmitterProfile {
   id: string
   role: string
   created_at: string
+  first_name: string | null
+  last_name: string | null
   dpi: string | null
   phone: string | null
   address: string | null
@@ -61,7 +63,7 @@ export function SubmitterProfileDialog({
       const loadProfile = async () => {
         const { data } = await supabase
           .from("profiles")
-          .select("id,role,created_at,dpi,phone,address")
+          .select("id,role,created_at,first_name,last_name,dpi,phone,address")
           .eq("id", profileId)
           .maybeSingle()
 
@@ -96,6 +98,11 @@ export function SubmitterProfileDialog({
           <div className="space-y-2 text-sm">
             <p>
               <span className="font-semibold">ID:</span> {profile.id}
+            </p>
+            <p>
+              <span className="font-semibold">Nombre:</span>{" "}
+              {[profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
+                "No registrado"}
             </p>
             <p>
               <span className="font-semibold">Rol:</span> {profile.role}

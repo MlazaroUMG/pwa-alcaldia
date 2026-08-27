@@ -1,33 +1,73 @@
 import { useEffect, useState } from "react"
-import { MapPin } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { LocationPreviewMap } from "@/components/citizen/LocationPreviewMap"
 import { supabase } from "@/lib/supabaseClient"
 import type { IncidentStatus } from "@/lib/supabase.types"
 
 interface MyCasesViewProps {
   userId: string
+  onBack?: () => void
 }
 
 interface MyIncident {
   id: string
   title: string
+  description: string
   category: string
   status: IncidentStatus
   created_at: string
-  latitude: number | null
-  longitude: number | null
+  image_url: string | null
+  resolution_summary: string | null
+  resolved_at: string | null
 }
 
 const STATUS_STYLES: Record<IncidentStatus, string> = {
-  Pendiente:
-    "border-muni-red/40 bg-muni-red/20 text-red-700 dark:text-red-300",
-  "En Progreso":
-    "border-muni-lightblue/50 bg-muni-lightblue/30 text-sky-800 dark:text-sky-200",
-  Resuelto:
-    "border-muni-green/40 bg-muni-green/30 text-emerald-800 dark:text-emerald-200",
+  Pendiente: "bg-blue-50 text-blue-600",
+  "En Progreso": "bg-amber-50 text-amber-600",
+  Resuelto: "bg-green-50 text-green-600",
+}
+
+const STATUS_LABELS: Record<IncidentStatus, string> = {
+  Pendiente: "Recibido",
+  "En Progreso": "En proceso",
+  Resuelto: "Resuelto",
+}
+
+function StatusTimeline({ status }: { status: IncidentStatus }) {
+  const currentIndex = status === "Pendiente" ? 0 : status === "En Progreso" ? 1 : 3
+  const steps = ["Recibido", "En proceso", "En revisión", "Resuelto"]
+
+  return (
+    <>
+      <div className="mt-3 flex items-center">
+        {steps.map((step, index) => {
+          const done = index <= currentIndex
+          return (
+            <div key={step} className="flex flex-1 items-center">
+              <div
+                className={`size-2.5 shrink-0 rounded-full transition-colors ${
+                  done ? "bg-indigo-500" : "bg-gray-300"
+                }`}
+              />
+              {index < steps.length - 1 && (
+                <div
+                  className={`h-0.5 flex-1 transition-colors ${
+                    index < currentIndex ? "bg-indigo-500" : "bg-gray-300"
+                  }`}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+      <div className="mt-1 flex justify-between text-xs text-gray-400">
+        {steps.map((step) => (
+          <span key={step}>{step}</span>
+        ))}
+      </div>
+    </>
+  )
 }
 
 /**
@@ -40,16 +80,16 @@ const STATUS_STYLES: Record<IncidentStatus, string> = {
  * @module Citizen
  * @returns {JSX.Element} Mobile-ready case timeline cards.
  */
-export function MyCasesView({ userId }: MyCasesViewProps) {
+export function MyCasesView({ userId, onBack }: MyCasesViewProps) {
   const [cases, setCases] = useState<MyIncident[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null)
+  const [selectedCase, setSelectedCase] = useState<MyIncident | null>(null)
 
   useEffect(() => {
     const loadCases = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,category,status,created_at,latitude,longitude")
+        .select("id,title,description,category,status,created_at,image_url,resolution_summary,resolved_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
 
@@ -60,65 +100,110 @@ export function MyCasesView({ userId }: MyCasesViewProps) {
     void loadCases()
   }, [userId])
 
+  if (selectedCase) {
+    return (
+      <section className="px-4 py-5">
+        <button
+          type="button"
+          onClick={() => setSelectedCase(null)}
+          className="mb-4 flex items-center gap-1.5 text-sm text-indigo-300 hover:text-gray-100"
+        >
+          <ArrowLeft className="size-4" />
+          Mis tickets
+        </button>
+
+        <article className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+          {selectedCase.image_url && (
+            <img
+              src={selectedCase.image_url}
+              alt={`Evidencia de ${selectedCase.title}`}
+              className="h-44 w-full object-cover"
+            />
+          )}
+          <div className="p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="font-mono text-xs text-gray-400">
+                {selectedCase.id.slice(0, 8)}
+              </span>
+              <Badge className={STATUS_STYLES[selectedCase.status]}>
+                {STATUS_LABELS[selectedCase.status]}
+              </Badge>
+            </div>
+            <h2 className="font-display mb-1 text-base font-bold text-gray-900">
+              {selectedCase.title}
+            </h2>
+            <p className="mb-3 text-xs text-gray-500">{selectedCase.category}</p>
+            <p className="text-sm leading-relaxed text-gray-600">
+              {selectedCase.description}
+            </p>
+            <StatusTimeline status={selectedCase.status} />
+          </div>
+        </article>
+
+        {selectedCase.status === "Resuelto" && (
+          <article className="rounded-2xl border border-green-100 bg-green-50 p-4">
+            <h3 className="mb-2 text-sm font-semibold text-green-800">Resolución</h3>
+            {selectedCase.image_url && (
+              <img
+                src={selectedCase.image_url}
+                alt={`Resolución de ${selectedCase.title}`}
+                className="mb-3 h-36 w-full rounded-xl object-cover"
+              />
+            )}
+            <p className="text-sm text-green-700">
+              {selectedCase.resolution_summary ??
+                "Incidencia resuelta por las autoridades correspondientes."}
+            </p>
+          </article>
+        )}
+      </section>
+    )
+  }
+
   return (
-    <section className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
-      <header>
-        <h2 className="text-lg font-semibold text-foreground">Mis casos</h2>
-        <p className="text-sm text-muted-foreground">
-          Seguimiento de tus reportes ciudadanos.
-        </p>
-      </header>
+    <section className="px-4 py-5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 flex items-center gap-1.5 text-sm text-indigo-300 hover:text-gray-100"
+      >
+        <ArrowLeft className="size-4" />
+        Volver
+      </button>
+
+      <h1 className="font-display mb-5 text-xl font-bold text-gray-100">Mis Tickets</h1>
 
       {isLoading && <p className="text-sm text-muted-foreground">Cargando casos...</p>}
       {!isLoading && cases.length === 0 && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-indigo-300">
           Aún no has creado reportes en el sistema.
         </p>
       )}
 
       <div className="space-y-3">
         {cases.map((incident) => (
-          <article key={incident.id} className="rounded-xl border bg-background p-4">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">{incident.title}</p>
-              <Badge variant="outline" className={STATUS_STYLES[incident.status]}>
-                {incident.status}
+          <button
+            key={incident.id}
+            type="button"
+            onClick={() => setSelectedCase(incident)}
+            className="w-full rounded-2xl border border-gray-100 bg-white p-4 text-left transition-all hover:border-indigo-200 hover:shadow-sm"
+          >
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="mb-0.5 font-mono text-xs text-gray-400">
+                  {incident.id.slice(0, 8)}
+                </div>
+                <div className="text-sm font-semibold text-gray-900">
+                  {incident.title}
+                </div>
+              </div>
+              <Badge className={STATUS_STYLES[incident.status]}>
+                {STATUS_LABELS[incident.status]}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">{incident.category}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {new Date(incident.created_at).toLocaleString()}
-            </p>
-
-            {incident.latitude !== null && incident.longitude !== null && (
-              <div className="mt-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 text-xs text-primary"
-                  onClick={() =>
-                    setExpandedCaseId((previous) =>
-                      previous === incident.id ? null : incident.id
-                    )
-                  }
-                >
-                  <MapPin className="size-3.5" />
-                  {expandedCaseId === incident.id
-                    ? "Ocultar ubicación"
-                    : "Ver ubicación"}
-                </Button>
-
-                {expandedCaseId === incident.id && (
-                  <LocationPreviewMap
-                    latitude={incident.latitude}
-                    longitude={incident.longitude}
-                    className="mt-2"
-                  />
-                )}
-              </div>
-            )}
-          </article>
+            <div className="mb-2 text-xs text-gray-400">{incident.category}</div>
+            <StatusTimeline status={incident.status} />
+          </button>
         ))}
       </div>
     </section>

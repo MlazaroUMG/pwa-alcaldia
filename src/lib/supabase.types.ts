@@ -9,6 +9,8 @@ export interface Database {
           id: string
           role: string
           created_at: string
+          first_name: string | null
+          last_name: string | null
           dpi: string | null
           phone: string | null
           address: string | null
@@ -17,6 +19,8 @@ export interface Database {
           id: string
           role?: string
           created_at?: string
+          first_name?: string | null
+          last_name?: string | null
           dpi?: string | null
           phone?: string | null
           address?: string | null
@@ -25,6 +29,8 @@ export interface Database {
           id?: string
           role?: string
           created_at?: string
+          first_name?: string | null
+          last_name?: string | null
           dpi?: string | null
           phone?: string | null
           address?: string | null

@@ -16,6 +16,8 @@ interface ProfileDetails {
   id: string
   role: string
   created_at: string
+  first_name: string | null
+  last_name: string | null
   dpi: string | null
   phone: string | null
   address: string | null
@@ -39,6 +41,8 @@ export function ProfileSettingsView({
   layout = "citizen",
 }: ProfileSettingsViewProps) {
   const [profile, setProfile] = useState<ProfileDetails | null>(null)
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [phone, setPhone] = useState("")
   const [address, setAddress] = useState("")
   const [message, setMessage] = useState<string | null>(null)
@@ -57,12 +61,14 @@ export function ProfileSettingsView({
 
       const { data } = await supabase
         .from("profiles")
-        .select("id,role,created_at,dpi,phone,address")
+        .select("id,role,created_at,first_name,last_name,dpi,phone,address")
         .eq("id", user.id)
         .maybeSingle()
 
       const nextProfile = (data ?? null) as ProfileDetails | null
       setProfile(nextProfile)
+      setFirstName(nextProfile?.first_name ?? "")
+      setLastName(nextProfile?.last_name ?? "")
       setPhone(nextProfile?.phone ?? "")
       setAddress(nextProfile?.address ?? "")
     }
@@ -82,6 +88,8 @@ export function ProfileSettingsView({
     const { error } = await supabase
       .from("profiles")
       .update({
+        first_name: firstName.trim() || null,
+        last_name: lastName.trim() || null,
         phone: phone.trim() || null,
         address: address.trim() || null,
       })
@@ -98,6 +106,8 @@ export function ProfileSettingsView({
       previous
         ? {
             ...previous,
+            first_name: firstName.trim() || null,
+            last_name: lastName.trim() || null,
             phone: phone.trim() || null,
             address: address.trim() || null,
           }
@@ -147,6 +157,24 @@ export function ProfileSettingsView({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4 rounded-xl border bg-card p-4">
           <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="profile-first-name">Nombre</Label>
+              <Input
+                id="profile-first-name"
+                className="mt-1"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="profile-last-name">Apellido</Label>
+              <Input
+                id="profile-last-name"
+                className="mt-1"
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+              />
+            </div>
             <div>
               <Label>Correo</Label>
               <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-foreground">

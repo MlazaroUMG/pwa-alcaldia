@@ -51,6 +51,9 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [globalFilter, setGlobalFilter] = useState("")
 
+  // TanStack Table exposes stable table helpers through an API the React Compiler
+  // cannot memoize automatically; this component does not pass them to memoized children.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

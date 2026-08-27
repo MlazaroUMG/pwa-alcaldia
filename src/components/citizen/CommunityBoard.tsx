@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react"
+import { ArrowLeft, CheckCircle2, UsersRound } from "lucide-react"
 
 import { supabase } from "@/lib/supabaseClient"
+
+interface CommunityBoardProps {
+  onBack?: () => void
+}
 
 interface PublicResolvedIncident {
   category: string
@@ -21,7 +26,7 @@ interface PublicResolvedIncident {
  * @module Citizen
  * @returns {JSX.Element} Sanitized community feed of published resolutions.
  */
-export function CommunityBoard() {
+export function CommunityBoard({ onBack }: CommunityBoardProps) {
   const [items, setItems] = useState<PublicResolvedIncident[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -52,18 +57,27 @@ export function CommunityBoard() {
   }, [])
 
   return (
-    <section className="space-y-4 rounded-lg border bg-card p-4 shadow-sm sm:p-6">
-      <header className="space-y-1">
-        <h2 className="text-xl font-semibold tracking-tight">
-          Community Board
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Historial público de incidencias resueltas por la municipalidad.
+    <section className="px-4 py-5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 flex items-center gap-1.5 text-sm text-indigo-300 hover:text-gray-100"
+      >
+        <ArrowLeft className="size-4" />
+        Volver
+      </button>
+
+      <header className="mb-5">
+        <h1 className="font-display text-xl font-bold text-gray-100">
+          Muro Comunitario
+        </h1>
+        <p className="mt-1 text-xs text-indigo-300">
+          Resoluciones publicadas por la alcaldía para tu comunidad.
         </p>
       </header>
 
       {isLoading && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-indigo-300">
           Cargando incidencias publicadas...
         </p>
       )}
@@ -71,48 +85,57 @@ export function CommunityBoard() {
       {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
 
       {!isLoading && !errorMessage && items.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No hay incidencias públicas resueltas por el momento.
-        </p>
+        <div className="py-16 text-center text-indigo-300">
+          <UsersRound className="mx-auto mb-3 size-12 opacity-50" />
+          <p className="text-sm">Sin publicaciones en el muro</p>
+        </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-4">
         {items.map((item, index) => (
           <article
             key={`${item.category}-${item.resolved_at ?? "sin-fecha"}-${index}`}
-            className="space-y-3 rounded-lg border p-4"
+            className="overflow-hidden rounded-2xl border border-gray-100 bg-white"
           >
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Categoría
-              </p>
-              <p className="font-medium text-foreground">{item.category}</p>
-            </div>
-
-            {item.image_url && (
+            {item.image_url ? (
               <img
                 src={item.image_url}
-                alt={`Evidencia de incidencia en ${item.category}`}
-                className="h-44 w-full rounded-md object-cover"
+                alt={`Resolución publicada de ${item.category}`}
+                className="h-48 w-full object-cover"
                 loading="lazy"
               />
+            ) : (
+              <div className="flex h-32 w-full items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
+                <CheckCircle2 className="size-9 text-emerald-500" />
+              </div>
             )}
 
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Resolución
+            <div className="p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                  <CheckCircle2 className="size-3" />
+                  Resuelto
+                </span>
+                <span className="text-xs text-gray-400">{item.category}</span>
+              </div>
+              <h2 className="mb-1 text-sm font-bold text-gray-900">
+                Resolución publicada
+              </h2>
+              <p className="mb-3 text-xs leading-relaxed text-gray-500">
+                {item.resolution_summary ??
+                  "Resolución aplicada por el equipo técnico."}
               </p>
-              <p className="text-sm text-foreground">
-                {item.resolution_summary ?? "Resolución aplicada por el equipo técnico."}
-              </p>
+              <div className="flex items-center justify-between border-t border-gray-50 pt-3 text-xs text-gray-400">
+                <div className="flex items-center gap-1">
+                  <UsersRound className="size-3" />0 ciudadanos confirmaron
+                </div>
+                <span>
+                  {item.resolved_at
+                    ? new Date(item.resolved_at).toLocaleDateString()
+                    : "Fecha no disponible"}
+                </span>
+              </div>
             </div>
-
-            <p className="text-xs text-muted-foreground">
-              Fecha:{" "}
-              {item.resolved_at
-                ? new Date(item.resolved_at).toLocaleDateString()
-                : "No disponible"}
-            </p>
           </article>
         ))}
       </div>

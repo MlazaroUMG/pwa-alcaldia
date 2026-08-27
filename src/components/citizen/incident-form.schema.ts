@@ -2,10 +2,13 @@ import { z } from "zod"
 
 /** Incident categories available to citizens when reporting a problem. */
 export const INCIDENT_CATEGORIES = [
+  "Vialidad",
+  "Alumbrado",
+  "Residuos",
   "Agua",
-  "Infraestructura",
-  "Iluminación",
   "Seguridad",
+  "Espacios públicos",
+  "Otro",
 ] as const
 
 export type IncidentCategory = (typeof INCIDENT_CATEGORIES)[number]

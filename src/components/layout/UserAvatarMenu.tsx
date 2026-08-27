@@ -33,7 +33,7 @@ export function UserAvatarMenu({ email, onSignOut, onOpenProfile }: UserAvatarMe
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex size-10 items-center justify-center rounded-full border border-white/40 bg-white/10 text-sm font-semibold text-white transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+          className="flex size-10 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white transition-colors hover:bg-indigo-600 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:outline-none"
           aria-label="Abrir menú de usuario"
         >
           {initials}

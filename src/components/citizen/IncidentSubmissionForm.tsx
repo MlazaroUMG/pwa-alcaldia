@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ImagePlus } from "lucide-react"
+import { ArrowLeft, Camera, ImagePlus, MapPin } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -13,13 +13,6 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabaseClient"
@@ -33,6 +26,7 @@ import {
 
 interface IncidentSubmissionFormProps {
   userId: string
+  onBack?: () => void
 }
 
 /**
@@ -47,7 +41,7 @@ interface IncidentSubmissionFormProps {
  * @module Citizen
  * @returns {JSX.Element} Validated incident report form for the Citizen PWA module.
  */
-export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) {
+export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFormProps) {
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [photoInputKey, setPhotoInputKey] = useState(0)
   const [submitFeedback, setSubmitFeedback] = useState<string | null>(null)
@@ -65,8 +59,8 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
     },
   })
 
-  const latitude = form.watch("latitude")
-  const longitude = form.watch("longitude")
+  const latitude = useWatch({ control: form.control, name: "latitude" })
+  const longitude = useWatch({ control: form.control, name: "longitude" })
 
   const handleSubmit = async (values: IncidentFormValues) => {
     setSubmitFeedback(null)
@@ -145,30 +139,70 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
-        className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-8"
+        className="flex w-full flex-col gap-5 px-4 py-5"
         noValidate
       >
-        <header className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-            Reportar incidente
+        <header className="space-y-5">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-sm text-indigo-300 transition-colors hover:text-gray-100"
+          >
+            <ArrowLeft className="size-4" />
+            Volver
+          </button>
+          <h1 className="font-display text-xl font-bold text-gray-100">
+            Reportar Incidencia
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Describe el problema para que la Alcaldía Auxiliar de Zona 18 pueda
-            atenderlo.
-          </p>
         </header>
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                Categoría *
+              </FormLabel>
+              <FormControl>
+                <div className="flex flex-wrap gap-2">
+                  {INCIDENT_CATEGORIES.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() =>
+                        form.setValue("category", category, { shouldValidate: true })
+                      }
+                      className={cn(
+                        "rounded-xl border px-4 py-2 text-sm font-medium transition-all",
+                        field.value === category
+                          ? "border-indigo-500 bg-indigo-500 text-white"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-indigo-300"
+                      )}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Título</FormLabel>
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                Título *
+              </FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Ej. Fuga de agua en la calle principal"
+                  placeholder="Describe brevemente el problema"
                   autoComplete="off"
-                  className="h-11 text-base sm:h-10 sm:text-sm"
+                  className="h-14 rounded-xl border-indigo-200 bg-transparent px-4 text-base text-gray-100 placeholder:text-indigo-300/40 focus-visible:ring-indigo-300"
                   {...field}
                 />
               </FormControl>
@@ -182,12 +216,14 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Descripción</FormLabel>
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                Descripción
+              </FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Detalla qué ocurre, dónde y desde cuándo..."
+                  placeholder="Proporciona más detalles sobre la incidencia..."
                   rows={5}
-                  className="min-h-32 text-base sm:min-h-28 sm:text-sm"
+                  className="min-h-32 resize-none rounded-xl border-indigo-200 bg-transparent px-4 py-3 text-base text-gray-100 placeholder:text-indigo-300/40 focus-visible:ring-indigo-300"
                   {...field}
                 />
               </FormControl>
@@ -198,35 +234,12 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
 
         <FormField
           control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Categoría</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
-                    <SelectValue placeholder="Selecciona una categoría" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {INCIDENT_CATEGORIES.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
           name="photo"
           render={({ field: { onChange, ref, value, ...field } }) => (
             <FormItem>
-              <FormLabel>Fotografía (opcional)</FormLabel>
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                Fotografía de evidencia
+              </FormLabel>
               <FormControl>
                 <div className="space-y-3">
                   <input
@@ -249,28 +262,25 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
                     type="button"
                     onClick={() => photoInputRef.current?.click()}
                     className={cn(
-                      "flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-muted/30 px-4 py-8 text-center transition-colors",
-                      "hover:border-ring hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                      "active:bg-muted/60"
+                      "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-7 text-center transition-all",
+                      "border-gray-200 bg-gray-100 text-gray-400 hover:border-gray-300 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:outline-none"
                     )}
                   >
-                    <ImagePlus
-                      className="size-8 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                    <span className="text-sm font-medium text-foreground">
-                      Toca para tomar o seleccionar una foto
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      JPG, PNG o WEBP
+                    {value instanceof File ? (
+                      <ImagePlus className="size-7 text-indigo-500" aria-hidden="true" />
+                    ) : (
+                      <Camera className="size-7 text-gray-400" aria-hidden="true" />
+                    )}
+                    <span className="text-sm">
+                      {value instanceof File
+                        ? "Foto adjuntada"
+                        : "Tomar foto o seleccionar galería"}
                     </span>
                   </button>
                   {value instanceof File && (
-                    <p className="truncate text-sm text-muted-foreground">
+                    <p className="break-all text-sm text-indigo-300">
                       Archivo seleccionado:{" "}
-                      <span className="font-medium text-foreground">
-                        {value.name}
-                      </span>
+                      <span className="font-medium text-gray-100">{value.name}</span>
                     </p>
                   )}
                 </div>
@@ -285,23 +295,35 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
           name="latitude"
           render={() => (
             <FormItem>
-              <FormLabel>Ubicación del incidente</FormLabel>
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                Ubicación *
+              </FormLabel>
               <FormControl>
-                <LocationPicker
-                  value={
-                    latitude !== undefined && longitude !== undefined
-                      ? { latitude, longitude }
-                      : null
-                  }
-                  onChange={(coordinates) => {
-                    form.setValue("latitude", coordinates.latitude, {
-                      shouldValidate: true,
-                    })
-                    form.setValue("longitude", coordinates.longitude, {
-                      shouldValidate: true,
-                    })
-                  }}
-                />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-100 px-4 py-3 text-gray-400">
+                    <MapPin className="size-5" />
+                    <span className="text-sm">
+                      {latitude !== undefined && longitude !== undefined
+                        ? "Ubicación GPS capturada"
+                        : "Usar mi ubicación GPS"}
+                    </span>
+                  </div>
+                  <LocationPicker
+                    value={
+                      latitude !== undefined && longitude !== undefined
+                        ? { latitude, longitude }
+                        : null
+                    }
+                    onChange={(coordinates) => {
+                      form.setValue("latitude", coordinates.latitude, {
+                        shouldValidate: true,
+                      })
+                      form.setValue("longitude", coordinates.longitude, {
+                        shouldValidate: true,
+                      })
+                    }}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -311,10 +333,10 @@ export function IncidentSubmissionForm({ userId }: IncidentSubmissionFormProps) 
         <Button
           type="submit"
           size="lg"
-          className="h-12 w-full bg-muni-green text-[#153d0c] hover:bg-muni-green/90 sm:h-11 sm:text-sm"
+          className="h-14 w-full rounded-2xl bg-indigo-500 text-sm font-semibold text-white shadow-sm hover:bg-indigo-600 disabled:opacity-50"
           disabled={form.formState.isSubmitting}
         >
-          Enviar reporte
+          {form.formState.isSubmitting ? "Enviando..." : "Enviar reporte"}
         </Button>
 
         {submitError && <p className="text-sm text-destructive">{submitError}</p>}

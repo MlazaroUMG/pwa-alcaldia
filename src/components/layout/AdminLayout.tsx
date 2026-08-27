@@ -1,32 +1,37 @@
 import { useState } from "react"
 import type { ComponentType } from "react"
-import { CheckCheck, Inbox, LayoutList, Megaphone, SlidersHorizontal } from "lucide-react"
+import {
+  Bell,
+  CheckCheck,
+  CircleHelp,
+  Columns3,
+  Inbox,
+  LayoutDashboard,
+  LayoutList,
+  Megaphone,
+  SlidersHorizontal,
+} from "lucide-react"
 
 import { AdminCommunityWallView } from "@/components/admin/AdminCommunityWallView"
+import { AdminDashboardView } from "@/components/admin/AdminDashboardView"
 import { AdminInboxView } from "@/components/admin/AdminInboxView"
 import { AdminResolvedView } from "@/components/admin/AdminResolvedView"
 import { AdminTicketTable } from "@/components/admin/AdminTicketTable"
+import { AdminTicketsBoardView } from "@/components/admin/AdminTicketsBoardView"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { UserAvatarMenu } from "@/components/layout/UserAvatarMenu"
 import { ProfileSettingsView } from "@/components/profile/ProfileSettingsView"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
 
-type AdminSection = "inbox" | "management" | "resolved" | "wall" | "profile"
+type AdminSection =
+  | "dashboard"
+  | "inbox"
+  | "management"
+  | "board"
+  | "resolved"
+  | "wall"
+  | "profile"
 
 interface AdminLayoutProps {
   email?: string
@@ -40,89 +45,86 @@ interface AdminNavItem {
 }
 
 const NAV_ITEMS: AdminNavItem[] = [
-  { key: "inbox", label: "Bandeja de Entrada", icon: Inbox },
-  { key: "management", label: "Gestión", icon: LayoutList },
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "inbox", label: "Bandeja", icon: Inbox },
+  { key: "management", label: "Incidencias", icon: LayoutList },
+  { key: "board", label: "Tablero", icon: Columns3 },
   { key: "resolved", label: "Resueltos", icon: CheckCheck },
-  { key: "wall", label: "Muro Comunitario", icon: Megaphone },
+  { key: "wall", label: "Muro Público", icon: Megaphone },
 ]
 
 /**
  * Desktop-first operations shell for municipal administrators.
  *
- * Adopts the shadcn-admin reference structure — a collapsible sidebar,
- * light/dark mode toggle, and an account profile view — around the
- * previously built ticket triage, management, resolution, and public wall
- * moderation modules. Navigation stays state-driven (no router) and the
- * content area never overflows the viewport horizontally.
+ * Adopts the shadcn-admin reference structure with a compact fixed sidebar,
+ * light/dark mode toggle, and an account profile view around the previously
+ * built ticket triage, management, resolution, and public wall moderation
+ * modules. Navigation stays state-driven and the content area uses the full
+ * remaining viewport width.
  *
  * @component
  * @module Layout
  * @returns {JSX.Element} Sidebar-based admin workspace with contextual tools.
  */
 export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
-  const [section, setSection] = useState<AdminSection>("inbox")
+  const [section, setSection] = useState<AdminSection>("dashboard")
   const [searchQuery, setSearchQuery] = useState("")
   const [onlyPending, setOnlyPending] = useState(false)
 
-  const showSearchBar = section === "inbox" || section === "management"
+  const showSearchBar = section === "inbox"
 
   return (
-    <SidebarProvider>
-      <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <div className="flex items-center gap-2 px-2 py-1 group-data-[collapsible=icon]:justify-center">
+    <div className="flex h-screen w-full max-w-full overflow-hidden bg-[#f7f9fc] dark:bg-[#0d0b45]">
+      <aside className="flex h-screen w-[72px] shrink-0 flex-col bg-[#151357]">
+        <div className="flex h-[72px] shrink-0 items-center justify-center">
+          <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-[#2a278f] bg-white">
             <img
               src="/logo.png"
               alt="Alcaldía Auxiliar Zona 18"
-              className="size-9 shrink-0 rounded object-contain group-data-[collapsible=icon]:size-7"
+              className="size-9 object-contain"
             />
-            <div className="group-data-[collapsible=icon]:hidden">
-              <p className="text-sm font-bold leading-tight text-sidebar-foreground">
-                Admin Portal
-              </p>
-              <p className="text-xs text-sidebar-foreground/80">Alcaldía Auxiliar</p>
-            </div>
           </div>
-        </SidebarHeader>
+        </div>
 
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {NAV_ITEMS.map((item) => (
-                  <SidebarMenuItem key={item.key}>
-                    <SidebarMenuButton
-                      isActive={section === item.key}
-                      tooltip={item.label}
-                      onClick={() => setSection(item.key)}
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
+        <nav className="flex flex-1 flex-col items-center gap-1 px-2 py-3">
+          {NAV_ITEMS.map((item) => {
+            const isActive = section === item.key
+            return (
+              <button
+                key={item.key}
+                type="button"
+                title={item.label}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex size-10 items-center justify-center rounded-xl transition-all duration-150 ${
+                  isActive
+                    ? "border border-[#2a278f] bg-[#0d0b45] text-[#97d700]"
+                    : "text-[#6b6fa8] hover:bg-[#1e1b7a] hover:text-white"
+                }`}
+                onClick={() => setSection(item.key)}
+              >
+                <item.icon className="size-5" />
+              </button>
+            )
+          })}
+        </nav>
 
-        <SidebarFooter>
-          <p className="px-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
-            Zona 18, Ciudad de Guatemala
-          </p>
-        </SidebarFooter>
-      </Sidebar>
+        <div className="flex h-16 shrink-0 items-center justify-center">
+          <div className="flex size-9 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
+            {email?.charAt(0).toUpperCase() ?? "A"}
+          </div>
+        </div>
+      </aside>
 
-      <SidebarInset className="min-w-0">
-        <header className="flex min-w-0 flex-col gap-3 border-b bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-gray-100 bg-white px-6 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
           <div className="flex min-w-0 items-center gap-2">
-            <SidebarTrigger />
             {showSearchBar && (
               <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
                 <Input
                   type="search"
                   placeholder="Buscar ticket ID, zona..."
-                  className="w-full sm:max-w-md"
+                  className="w-full rounded-xl border-gray-200 sm:max-w-md"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                 />
@@ -136,9 +138,29 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
                 </Button>
               </div>
             )}
+            {!showSearchBar && (
+              <span className="truncate font-mono text-xs uppercase tracking-wider text-gray-400 dark:text-indigo-300">
+                Sistema de Gestión de Incidencias
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Notificaciones"
+              className="relative rounded-xl p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:text-indigo-300 dark:hover:bg-indigo-900"
+            >
+              <Bell className="size-[18px]" />
+              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-red-500" />
+            </button>
+            <button
+              type="button"
+              aria-label="Ayuda"
+              className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:text-indigo-300 dark:hover:bg-indigo-900"
+            >
+              <CircleHelp className="size-[18px]" />
+            </button>
             <ThemeToggle />
             <UserAvatarMenu
               email={email}
@@ -148,18 +170,22 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 overflow-x-hidden">
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden">
+          {section === "dashboard" && (
+            <AdminDashboardView onNavigate={(nextSection) => setSection(nextSection)} />
+          )}
           {section === "inbox" && (
             <AdminInboxView searchQuery={searchQuery} onlyPending={onlyPending} />
           )}
           {section === "management" && <AdminTicketTable />}
+          {section === "board" && <AdminTicketsBoardView />}
           {section === "resolved" && <AdminResolvedView />}
           {section === "wall" && <AdminCommunityWallView />}
           {section === "profile" && (
             <ProfileSettingsView email={email} layout="admin" />
           )}
         </main>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </div>
   )
 }
