@@ -16,6 +16,9 @@ interface InboxIncident {
   id: string
   title: string
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   status: IncidentStatus
   created_at: string
   user_id: string | null
@@ -43,7 +46,7 @@ export function AdminInboxView({ searchQuery, onlyPending }: AdminInboxViewProps
     const loadInbox = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,category,status,created_at,user_id,latitude,longitude")
+        .select("id,title,category,dependency,call_type_code,call_type_label,status,created_at,user_id,latitude,longitude")
         .in("status", ["Pendiente", "En Progreso"])
         .order("created_at", { ascending: false })
 
@@ -60,6 +63,8 @@ export function AdminInboxView({ searchQuery, onlyPending }: AdminInboxViewProps
         normalizedQuery.length === 0 ||
         incident.id.toLowerCase().includes(normalizedQuery) ||
         incident.category.toLowerCase().includes(normalizedQuery) ||
+        incident.dependency?.toLowerCase().includes(normalizedQuery) ||
+        incident.call_type_label?.toLowerCase().includes(normalizedQuery) ||
         incident.title.toLowerCase().includes(normalizedQuery)
 
       const matchesPending = !onlyPending || incident.status === "Pendiente"
@@ -91,7 +96,15 @@ export function AdminInboxView({ searchQuery, onlyPending }: AdminInboxViewProps
               )}
             </div>
 
-            <p className="text-sm text-muted-foreground">{incident.category}</p>
+            <div className="space-y-0.5 text-sm text-muted-foreground">
+              <p>{incident.category}</p>
+              <p className="text-xs">{incident.dependency ?? "Sin dependencia"}</p>
+              <p className="text-xs">
+                {incident.call_type_code && incident.call_type_label
+                  ? `${incident.call_type_code} - ${incident.call_type_label}`
+                  : "Sin tipo de llamada"}
+              </p>
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {new Date(incident.created_at).toLocaleString()}
             </p>

@@ -7,6 +7,9 @@ interface ResolvedIncident {
   id: string
   title: string
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   resolved_at: string | null
   is_public: boolean
 }
@@ -28,7 +31,7 @@ export function AdminResolvedView() {
     const loadResolved = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,category,resolved_at,is_public")
+        .select("id,title,category,dependency,call_type_code,call_type_label,resolved_at,is_public")
         .eq("status", "Resuelto")
         .order("resolved_at", { ascending: false })
 
@@ -73,6 +76,14 @@ export function AdminResolvedView() {
             <div>
               <p className="font-semibold">{item.title}</p>
               <p className="text-sm text-muted-foreground">{item.category}</p>
+              <p className="text-xs text-muted-foreground">
+                {item.dependency ?? "Sin dependencia"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {item.call_type_code && item.call_type_label
+                  ? `${item.call_type_code} - ${item.call_type_label}`
+                  : "Sin tipo de llamada"}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {item.resolved_at
                   ? new Date(item.resolved_at).toLocaleString()

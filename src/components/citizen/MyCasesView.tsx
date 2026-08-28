@@ -15,6 +15,9 @@ interface MyIncident {
   title: string
   description: string
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   status: IncidentStatus
   created_at: string
   image_url: string | null
@@ -89,7 +92,7 @@ export function MyCasesView({ userId, onBack }: MyCasesViewProps) {
     const loadCases = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,description,category,status,created_at,image_url,resolution_summary,resolved_at")
+        .select("id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,resolution_summary,resolved_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
 
@@ -132,7 +135,15 @@ export function MyCasesView({ userId, onBack }: MyCasesViewProps) {
             <h2 className="font-display mb-1 text-base font-bold text-gray-900">
               {selectedCase.title}
             </h2>
-            <p className="mb-3 text-xs text-gray-500">{selectedCase.category}</p>
+            <div className="mb-3 space-y-0.5 text-xs text-gray-500">
+              <p>{selectedCase.category}</p>
+              <p>{selectedCase.dependency ?? "Sin dependencia"}</p>
+              <p>
+                {selectedCase.call_type_code && selectedCase.call_type_label
+                  ? `${selectedCase.call_type_code} - ${selectedCase.call_type_label}`
+                  : "Sin tipo de llamada"}
+              </p>
+            </div>
             <p className="text-sm leading-relaxed text-gray-600">
               {selectedCase.description}
             </p>
@@ -201,7 +212,15 @@ export function MyCasesView({ userId, onBack }: MyCasesViewProps) {
                 {STATUS_LABELS[incident.status]}
               </Badge>
             </div>
-            <div className="mb-2 text-xs text-gray-400">{incident.category}</div>
+            <div className="mb-2 space-y-0.5 text-xs text-gray-400">
+              <p>{incident.category}</p>
+              <p>{incident.dependency ?? "Sin dependencia"}</p>
+              <p>
+                {incident.call_type_code && incident.call_type_label
+                  ? `${incident.call_type_code} - ${incident.call_type_label}`
+                  : "Sin tipo de llamada"}
+              </p>
+            </div>
             <StatusTimeline status={incident.status} />
           </button>
         ))}

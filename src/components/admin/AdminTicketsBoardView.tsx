@@ -3,7 +3,6 @@ import {
   FileText,
   Filter,
   Grid2X2,
-  MessageSquare,
   Plus,
   Search,
   UserRound,
@@ -19,6 +18,9 @@ interface BoardIncident {
   title: string
   description: string
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   status: IncidentStatus
   created_at: string
   image_url: string | null
@@ -98,12 +100,18 @@ function TicketCard({ incident, onMoveForward }: TicketCardProps) {
         />
       )}
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 text-xs text-gray-400">
-          <MessageSquare className="size-3" />
-          0
-          <FileText className="ml-1.5 size-3" />
-          {incident.category}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 space-y-0.5 text-xs text-gray-400">
+          <div className="flex items-center gap-1">
+            <FileText className="size-3 shrink-0" />
+            <span className="truncate">{incident.category}</span>
+          </div>
+          <p className="line-clamp-1">{incident.dependency ?? "Sin dependencia"}</p>
+          <p className="line-clamp-1">
+            {incident.call_type_code && incident.call_type_label
+              ? `${incident.call_type_code} - ${incident.call_type_label}`
+              : "Sin tipo de llamada"}
+          </p>
         </div>
         <div className="flex size-6 items-center justify-center rounded-full border-2 border-white bg-gray-200">
           <UserRound className="size-3 text-gray-400" />
@@ -135,7 +143,7 @@ export function AdminTicketsBoardView() {
       const loadBoard = async () => {
         const { data, error } = await supabase
           .from("incidents")
-          .select("id,title,description,category,status,created_at,image_url")
+          .select("id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url")
           .order("created_at", { ascending: false })
 
         if (error) {
@@ -160,6 +168,8 @@ export function AdminTicketsBoardView() {
         normalizedSearch.length === 0 ||
         incident.title.toLowerCase().includes(normalizedSearch) ||
         incident.category.toLowerCase().includes(normalizedSearch) ||
+        incident.dependency?.toLowerCase().includes(normalizedSearch) ||
+        incident.call_type_label?.toLowerCase().includes(normalizedSearch) ||
         incident.id.toLowerCase().includes(normalizedSearch)
     )
   }, [incidents, search])

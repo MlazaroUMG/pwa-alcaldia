@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ArrowLeft, Camera, ImagePlus, MapPin } from "lucide-react"
@@ -13,12 +13,26 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabaseClient"
 import { LocationPicker } from "@/components/citizen/LocationPicker"
 import {
+  INCIDENT_CALL_TYPES_BY_DEPENDENCY,
+  getCallTypeByCode,
+  getCallTypeLabel,
+  type IncidentDependency,
+} from "@/lib/incident-classification"
+import {
   INCIDENT_CATEGORIES,
+  INCIDENT_DEPENDENCIES,
   incidentFormSchema,
   type IncidentFormValues,
   type IncidentSubmissionPayload,
@@ -53,6 +67,9 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
       title: "",
       description: "",
       category: undefined,
+      dependency: undefined,
+      callTypeCode: undefined,
+      callTypeLabel: "",
       photo: undefined,
       latitude: undefined,
       longitude: undefined,
@@ -61,15 +78,48 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
 
   const latitude = useWatch({ control: form.control, name: "latitude" })
   const longitude = useWatch({ control: form.control, name: "longitude" })
+  const selectedDependency = useWatch({ control: form.control, name: "dependency" })
+  const selectedPhoto = useWatch({ control: form.control, name: "photo" })
+  const availableCallTypes = useMemo(() => {
+    return selectedDependency
+      ? INCIDENT_CALL_TYPES_BY_DEPENDENCY[selectedDependency]
+      : []
+  }, [selectedDependency])
+  const photoPreviewUrl = useMemo(() => {
+    return selectedPhoto instanceof File ? URL.createObjectURL(selectedPhoto) : null
+  }, [selectedPhoto])
+
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl)
+      }
+    }
+  }, [photoPreviewUrl])
 
   const handleSubmit = async (values: IncidentFormValues) => {
     setSubmitFeedback(null)
     setSubmitError(null)
 
+    if (!values.dependency || values.callTypeCode === undefined) {
+      setSubmitError("Selecciona la dependencia y el tipo de llamada.")
+      return
+    }
+
+    const selectedCallType = getCallTypeByCode(values.dependency, values.callTypeCode)
+
+    if (!selectedCallType) {
+      setSubmitError("El tipo de llamada no corresponde a la dependencia seleccionada.")
+      return
+    }
+
     const payload: IncidentSubmissionPayload = {
       title: values.title,
       description: values.description,
       category: values.category,
+      dependency: values.dependency,
+      callTypeCode: selectedCallType.code,
+      callTypeLabel: selectedCallType.label,
       photo: values.photo ?? null,
       latitude: values.latitude,
       longitude: values.longitude,
@@ -93,7 +143,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
         })
 
       if (uploadError) {
-        setSubmitError(uploadError.message)
+        setSubmitError("No se pudo subir la fotografía. Intenta nuevamente.")
         return
       }
 
@@ -109,6 +159,9 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
       title: payload.title,
       description: payload.description,
       category: payload.category,
+      dependency: payload.dependency,
+      call_type_code: payload.callTypeCode,
+      call_type_label: payload.callTypeLabel,
       status: "Pendiente",
       image_url: imageUrl,
       is_public: false,
@@ -119,7 +172,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
     })
 
     if (insertError) {
-      setSubmitError(insertError.message)
+      setSubmitError("No se pudo registrar la incidencia. Verifica los datos e intenta nuevamente.")
       return
     }
 
@@ -127,6 +180,9 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
       title: "",
       description: "",
       category: undefined,
+      dependency: undefined,
+      callTypeCode: undefined,
+      callTypeLabel: "",
       photo: undefined,
       latitude: undefined,
       longitude: undefined,
@@ -234,6 +290,96 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
 
         <FormField
           control={form.control}
+          name="dependency"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                Dependencia *
+              </FormLabel>
+              <Select
+                value={field.value ?? ""}
+                onValueChange={(value) => {
+                  field.onChange(value as IncidentDependency)
+                  form.setValue("callTypeCode", undefined, { shouldValidate: true })
+                  form.setValue("callTypeLabel", "", { shouldValidate: true })
+                }}
+              >
+                <FormControl>
+                  <SelectTrigger className="h-14 w-full rounded-xl border-indigo-200 bg-transparent px-4 text-base text-gray-100 focus-visible:ring-indigo-300">
+                    <SelectValue placeholder="Selecciona la dependencia responsable" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {INCIDENT_DEPENDENCIES.map((dependency) => (
+                    <SelectItem key={dependency} value={dependency}>
+                      {dependency}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="callTypeCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                Tipo de llamada *
+              </FormLabel>
+              <Select
+                value={field.value ? String(field.value) : ""}
+                disabled={!selectedDependency}
+                onValueChange={(value) => {
+                  if (!selectedDependency) {
+                    return
+                  }
+
+                  const callTypeCode = Number(value)
+                  const callType = getCallTypeByCode(selectedDependency, callTypeCode)
+
+                  field.onChange(callTypeCode)
+                  form.setValue("callTypeLabel", callType?.label ?? "", {
+                    shouldValidate: true,
+                  })
+
+                  if (callType) {
+                    form.setValue("category", callType.category, { shouldValidate: true })
+                  }
+                }}
+              >
+                <FormControl>
+                  <SelectTrigger className="h-14 w-full rounded-xl border-indigo-200 bg-transparent px-4 text-left text-base text-gray-100 focus-visible:ring-indigo-300 disabled:opacity-60">
+                    <SelectValue
+                      placeholder={
+                        selectedDependency
+                          ? "Selecciona el tipo de llamada"
+                          : "Selecciona primero una dependencia"
+                      }
+                    />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {availableCallTypes.map((callType) => (
+                    <SelectItem key={callType.code} value={String(callType.code)}>
+                      {getCallTypeLabel(callType)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-indigo-300/70">
+                La categoría general se ajusta automáticamente según el tipo seleccionado.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="photo"
           render={({ field: { onChange, ref, value, ...field } }) => (
             <FormItem>
@@ -278,10 +424,19 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
                     </span>
                   </button>
                   {value instanceof File && (
-                    <p className="break-all text-sm text-indigo-300">
-                      Archivo seleccionado:{" "}
-                      <span className="font-medium text-gray-100">{value.name}</span>
-                    </p>
+                    <div className="space-y-2">
+                      {photoPreviewUrl && (
+                        <img
+                          src={photoPreviewUrl}
+                          alt={`Vista previa de ${value.name}`}
+                          className="h-40 w-full rounded-xl object-cover"
+                        />
+                      )}
+                      <p className="break-all text-sm text-indigo-300">
+                        Archivo seleccionado:{" "}
+                        <span className="font-medium text-gray-100">{value.name}</span>
+                      </p>
+                    </div>
                   )}
                 </div>
               </FormControl>

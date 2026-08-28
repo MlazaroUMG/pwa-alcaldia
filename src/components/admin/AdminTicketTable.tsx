@@ -28,6 +28,9 @@ interface AdminIncident {
   title: string
   description: string
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   status: IncidentStatus
   created_at: string
   image_url: string | null
@@ -108,7 +111,7 @@ export function AdminTicketTable() {
         const { data, error } = await supabase
           .from("incidents")
           .select(
-            "id,title,description,category,status,created_at,image_url,user_id,latitude,longitude"
+            "id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,user_id,latitude,longitude"
           )
           .order("created_at", { ascending: false })
 
@@ -151,7 +154,9 @@ export function AdminTicketTable() {
         normalizedSearch.length === 0 ||
         incident.id.toLowerCase().includes(normalizedSearch) ||
         incident.title.toLowerCase().includes(normalizedSearch) ||
-        incident.category.toLowerCase().includes(normalizedSearch)
+        incident.category.toLowerCase().includes(normalizedSearch) ||
+        incident.dependency?.toLowerCase().includes(normalizedSearch) ||
+        incident.call_type_label?.toLowerCase().includes(normalizedSearch)
 
       return matchesTab && matchesSearch
     })
@@ -251,8 +256,8 @@ export function AdminTicketTable() {
           </div>
         )}
 
-        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-[#2a278f] dark:bg-[#1e1b7a]">
-          <table className="w-full table-fixed text-sm">
+        <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm dark:border-[#2a278f] dark:bg-[#1e1b7a]">
+          <table className="w-full min-w-[1120px] table-fixed text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50 dark:border-indigo-900 dark:bg-indigo-950/40">
                 <th className="w-10 px-2 py-3 sm:px-4">
@@ -270,17 +275,20 @@ export function AdminTicketTable() {
                 <th className="px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
                   Incidencia
                 </th>
-                <th className="w-28 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                <th className="w-32 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
                   Categoría
+                </th>
+                <th className="w-40 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                  Dependencia
+                </th>
+                <th className="w-52 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                  Tipo de llamada
                 </th>
                 <th className="w-32 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
                   Estado
                 </th>
                 <th className="w-36 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
                   Actualizado
-                </th>
-                <th className="w-32 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
-                  Confirmaciones
                 </th>
                 <th className="w-28 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
                   Prioridad
@@ -332,6 +340,18 @@ export function AdminTicketTable() {
                       </span>
                     </td>
                     <td className="px-2 py-3 sm:px-3">
+                      <span className="line-clamp-2 text-xs text-gray-600 dark:text-indigo-200">
+                        {incident.dependency ?? "Sin dependencia"}
+                      </span>
+                    </td>
+                    <td className="px-2 py-3 sm:px-3">
+                      <span className="line-clamp-2 text-xs text-gray-600 dark:text-indigo-200">
+                        {incident.call_type_code && incident.call_type_label
+                          ? `${incident.call_type_code} - ${incident.call_type_label}`
+                          : "Sin tipo"}
+                      </span>
+                    </td>
+                    <td className="px-2 py-3 sm:px-3">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
                           STATUS_BADGE_STYLES[incident.status]
@@ -347,16 +367,6 @@ export function AdminTicketTable() {
                       <div className="flex min-w-0 items-center gap-1.5 text-xs text-gray-500">
                         <CalendarDays className="size-3.5 shrink-0" />
                         <span>{formatDate(incident.created_at)}</span>
-                      </div>
-                    </td>
-                    <td className="px-2 py-3 sm:px-3">
-                      <div className="flex items-center gap-1">
-                        <div className="flex size-6 items-center justify-center rounded-full border-2 border-white bg-gray-200 text-gray-400">
-                          <UserRound className="size-3" />
-                        </div>
-                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                          0
-                        </span>
                       </div>
                     </td>
                     <td className="px-2 py-3 sm:px-3">
@@ -433,6 +443,22 @@ export function AdminTicketTable() {
                 <div>
                   <p className="text-xs font-semibold uppercase text-gray-400">Categoría</p>
                   <p className="text-sm text-gray-700">{detailIncident.category}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-gray-400">Dependencia</p>
+                  <p className="text-sm text-gray-700">
+                    {detailIncident.dependency ?? "Sin dependencia"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-gray-400">
+                    Tipo de llamada
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    {detailIncident.call_type_code && detailIncident.call_type_label
+                      ? `${detailIncident.call_type_code} - ${detailIncident.call_type_label}`
+                      : "Sin tipo"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase text-gray-400">Estado</p>

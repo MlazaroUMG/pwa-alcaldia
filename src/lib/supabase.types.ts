@@ -52,6 +52,9 @@ export interface Database {
           resolved_at: string | null
           latitude: number | null
           longitude: number | null
+          dependency: string | null
+          call_type_code: number | null
+          call_type_label: string | null
         }
         Insert: {
           id?: string
@@ -67,6 +70,9 @@ export interface Database {
           resolved_at?: string | null
           latitude?: number | null
           longitude?: number | null
+          dependency?: string | null
+          call_type_code?: number | null
+          call_type_label?: string | null
         }
         Update: {
           id?: string
@@ -82,6 +88,9 @@ export interface Database {
           resolved_at?: string | null
           latitude?: number | null
           longitude?: number | null
+          dependency?: string | null
+          call_type_code?: number | null
+          call_type_label?: string | null
         }
         Relationships: []
       }

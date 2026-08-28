@@ -1,0 +1,18 @@
+{
+  "name": "CiudadApp - Gestión de Incidencias",
+  "short_name": "CiudadApp",
+  "description": "PWA ciudadana para reportar y dar seguimiento a incidencias municipales.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#edf3fb",
+  "theme_color": "#1700a5",
+  "icons": [
+    {
+      "src": "/icons.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -48,6 +48,22 @@ function MapClickHandler({ onSelect }: MapClickHandlerProps) {
   return null
 }
 
+function getGeolocationErrorMessage(error?: GeolocationPositionError) {
+  if (!navigator.geolocation) {
+    return "Tu navegador no soporta geolocalización. Selecciona el punto en el mapa."
+  }
+
+  if (error && error.code === error.PERMISSION_DENIED) {
+    return "El permiso de ubicación fue denegado. Selecciona el punto en el mapa."
+  }
+
+  if (error && error.code === error.TIMEOUT) {
+    return "La captura GPS tardó demasiado. Selecciona el punto en el mapa o vuelve a intentar."
+  }
+
+  return "No se pudo obtener tu ubicación. Selecciónala en el mapa."
+}
+
 /**
  * Interactive map for citizens to capture and adjust the exact location of
  * an incident before submitting a report.
@@ -65,7 +81,11 @@ function MapClickHandler({ onSelect }: MapClickHandlerProps) {
  */
 export function LocationPicker({ value, onChange }: LocationPickerProps) {
   const [isLocating, setIsLocating] = useState(false)
-  const [locationError, setLocationError] = useState<string | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(() =>
+    typeof navigator !== "undefined" && !navigator.geolocation
+      ? getGeolocationErrorMessage()
+      : null
+  )
 
   useEffect(() => {
     if (value || !navigator.geolocation) {
@@ -78,11 +98,11 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         })
+        setIsLocating(false)
       },
-      () => {
-        setLocationError(
-          "No se pudo obtener tu ubicación automáticamente. Selecciónala en el mapa."
-        )
+      (error) => {
+        setLocationError(getGeolocationErrorMessage(error))
+        setIsLocating(false)
       },
       { enableHighAccuracy: true, timeout: 8000 }
     )
@@ -93,7 +113,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError("Tu navegador no soporta geolocalización.")
+      setLocationError(getGeolocationErrorMessage())
       return
     }
 
@@ -108,10 +128,8 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
         })
         setIsLocating(false)
       },
-      () => {
-        setLocationError(
-          "No se pudo obtener tu ubicación. Verifica los permisos del navegador."
-        )
+      (error) => {
+        setLocationError(getGeolocationErrorMessage(error))
         setIsLocating(false)
       },
       { enableHighAccuracy: true, timeout: 8000 }
