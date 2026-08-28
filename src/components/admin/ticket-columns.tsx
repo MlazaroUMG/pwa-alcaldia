@@ -16,6 +16,9 @@ export interface AdminIncident {
   id: string
   title: string
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   status: IncidentStatus
   created_at: string
   image_url: string | null
@@ -81,6 +84,19 @@ export function getTicketColumns({
     {
       accessorKey: "category",
       header: "Categoría",
+    },
+    {
+      accessorKey: "dependency",
+      header: "Dependencia",
+      cell: ({ row }) => row.original.dependency ?? "Sin dependencia",
+    },
+    {
+      accessorKey: "call_type_label",
+      header: "Tipo de llamada",
+      cell: ({ row }) =>
+        row.original.call_type_code && row.original.call_type_label
+          ? `${row.original.call_type_code} - ${row.original.call_type_label}`
+          : "Sin tipo",
     },
     {
       accessorKey: "status",

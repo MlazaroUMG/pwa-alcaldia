@@ -21,6 +21,9 @@ interface DashboardIncident {
   id: string
   title: string
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   status: IncidentStatus
   created_at: string
   is_public: boolean
@@ -58,7 +61,7 @@ export function AdminDashboardView({ onNavigate }: AdminDashboardViewProps) {
       const loadDashboard = async () => {
         const { data, error } = await supabase
           .from("incidents")
-          .select("id,title,category,status,created_at,is_public")
+          .select("id,title,category,dependency,call_type_code,call_type_label,status,created_at,is_public")
           .order("created_at", { ascending: false })
 
         if (error) {
@@ -207,7 +210,15 @@ export function AdminDashboardView({ onNavigate }: AdminDashboardViewProps) {
                     <div className="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
                       {incident.title}
                     </div>
-                    <div className="text-xs text-gray-400">{incident.category}</div>
+                    <div className="text-xs text-gray-400">
+                      {incident.category}
+                      {incident.dependency ? ` · ${incident.dependency}` : ""}
+                    </div>
+                    <div className="truncate text-xs text-gray-400">
+                      {incident.call_type_code && incident.call_type_label
+                        ? `${incident.call_type_code} - ${incident.call_type_label}`
+                        : "Sin tipo de llamada"}
+                    </div>
                   </div>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${

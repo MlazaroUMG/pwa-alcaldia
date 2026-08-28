@@ -9,6 +9,9 @@ interface WallPost {
   id: string
   title: string
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   resolution_summary: string | null
   image_url: string | null
   resolved_at: string | null
@@ -46,7 +49,7 @@ export function AdminCommunityWallView() {
     const loadPosts = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,category,resolution_summary,image_url,resolved_at")
+        .select("id,title,category,dependency,call_type_code,call_type_label,resolution_summary,image_url,resolved_at")
         .eq("is_public", true)
         .eq("status", "Resuelto")
         .order("resolved_at", { ascending: false })
@@ -146,6 +149,14 @@ export function AdminCommunityWallView() {
                       <h3 className="mt-1 text-sm font-bold text-gray-900 dark:text-gray-100">
                         {post.title}
                       </h3>
+                      <p className="mt-0.5 text-xs text-gray-400">
+                        {post.dependency ?? "Sin dependencia"}
+                      </p>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-gray-400">
+                        {post.call_type_code && post.call_type_label
+                          ? `${post.call_type_code} - ${post.call_type_label}`
+                          : "Sin tipo de llamada"}
+                      </p>
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <button
@@ -207,9 +218,7 @@ export function AdminCommunityWallView() {
                       <Clock3 className="size-3" />
                       {formatResolvedDate(post.resolved_at)}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <UsersRound className="size-3" />0 ciudadanos confirmaron
-                    </div>
+                    <span>Publicado</span>
                   </div>
 
                   <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-100">
