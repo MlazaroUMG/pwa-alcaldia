@@ -46,6 +46,9 @@ interface CitizenIncidentSummary {
 
 interface CommunityPreview {
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   resolution_summary: string | null
   image_url: string | null
   resolved_at: string | null
@@ -86,7 +89,7 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
             .order("created_at", { ascending: false }),
           supabase
             .from("incidents")
-            .select("category,resolution_summary,image_url,resolved_at")
+            .select("category,dependency,call_type_code,call_type_label,resolution_summary,image_url,resolved_at")
             .eq("is_public", true)
             .eq("status", "Resuelto")
             .order("resolved_at", { ascending: false })
@@ -154,7 +157,7 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl border border-[#2a278f] bg-[#1e1b7a] p-3 text-center">
           <div className="text-xl font-bold text-amber-400">{counts.active}</div>
           <div className="mt-0.5 text-xs text-indigo-400">Activos</div>
@@ -162,10 +165,6 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
         <div className="rounded-xl border border-[#2a278f] bg-[#1e1b7a] p-3 text-center">
           <div className="text-xl font-bold text-green-400">{counts.resolved}</div>
           <div className="mt-0.5 text-xs text-indigo-400">Resueltos</div>
-        </div>
-        <div className="rounded-xl border border-[#2a278f] bg-[#1e1b7a] p-3 text-center">
-          <div className="text-xl font-bold text-indigo-300">0</div>
-          <div className="mt-0.5 text-xs text-indigo-400">Confirmados</div>
         </div>
       </div>
 
@@ -205,6 +204,16 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
                 ? `Resolución de ${communityPreview.category}`
                 : "Sin publicaciones recientes"}
             </h3>
+            {communityPreview && (
+              <p className="mt-1 line-clamp-1 text-xs text-indigo-300">
+                {communityPreview.dependency ?? "Sin dependencia"}
+              </p>
+            )}
+            {communityPreview?.call_type_code && communityPreview.call_type_label && (
+              <p className="mt-0.5 line-clamp-1 text-xs text-indigo-300">
+                {`${communityPreview.call_type_code} - ${communityPreview.call_type_label}`}
+              </p>
+            )}
             <p className="mt-1 line-clamp-2 text-xs text-indigo-300">
               {communityPreview?.resolution_summary ??
                 "Las resoluciones públicas aparecerán aquí cuando sean aprobadas."}

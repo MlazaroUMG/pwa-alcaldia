@@ -9,6 +9,9 @@ interface CommunityBoardProps {
 
 interface PublicResolvedIncident {
   category: string
+  dependency: string | null
+  call_type_code: number | null
+  call_type_label: string | null
   resolution_summary: string | null
   image_url: string | null
   resolved_at: string | null
@@ -18,7 +21,8 @@ interface PublicResolvedIncident {
  * Public-facing board for anonymized, resolved incidents.
  *
  * Data sanitization is enforced at query time by selecting only
- * `category`, `resolution_summary`, `image_url`, and `resolved_at`.
+ * `category`, public classification metadata, `resolution_summary`,
+ * `image_url`, and `resolved_at`.
  * No user identifiers, private descriptions, or location-level metadata are
  * requested or rendered in this component.
  *
@@ -38,7 +42,7 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
 
       const { data, error } = await supabase
         .from("incidents")
-        .select("category,resolution_summary,image_url,resolved_at")
+        .select("category,dependency,call_type_code,call_type_label,resolution_summary,image_url,resolved_at")
         .eq("is_public", true)
         .eq("status", "Resuelto")
         .order("resolved_at", { ascending: false })
@@ -118,6 +122,14 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
                 </span>
                 <span className="text-xs text-gray-400">{item.category}</span>
               </div>
+              <div className="mb-2 space-y-0.5 text-xs text-gray-400">
+                <p>{item.dependency ?? "Sin dependencia"}</p>
+                <p>
+                  {item.call_type_code && item.call_type_label
+                    ? `${item.call_type_code} - ${item.call_type_label}`
+                    : "Sin tipo de llamada"}
+                </p>
+              </div>
               <h2 className="mb-1 text-sm font-bold text-gray-900">
                 Resolución publicada
               </h2>
@@ -126,9 +138,7 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
                   "Resolución aplicada por el equipo técnico."}
               </p>
               <div className="flex items-center justify-between border-t border-gray-50 pt-3 text-xs text-gray-400">
-                <div className="flex items-center gap-1">
-                  <UsersRound className="size-3" />0 ciudadanos confirmaron
-                </div>
+                <span>Publicado por la alcaldía</span>
                 <span>
                   {item.resolved_at
                     ? new Date(item.resolved_at).toLocaleDateString()
