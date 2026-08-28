@@ -57,10 +57,10 @@ function AuthPage() {
   const [tab, setTab] = useState<AuthTab>("login")
 
   return (
-    <main className="flex min-h-screen items-stretch justify-center bg-gray-50 p-0 md:p-4">
-      <div className="flex w-full">
-        <div className="grid w-full overflow-hidden bg-white shadow-xl md:min-h-[calc(100vh-2rem)] md:grid-cols-2 md:rounded-2xl">
-          <section className="flex max-h-[calc(100vh-2rem)] flex-col overflow-y-auto p-6 sm:p-8">
+    <main className="min-h-screen bg-[#edf3fb] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center justify-center">
+        <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl md:grid-cols-2">
+          <section className="flex flex-col px-6 py-8 sm:px-8 md:px-10 lg:px-12">
             <div className="mb-7 flex items-center gap-3">
               <img
                 src="/logo.png"
@@ -81,7 +81,7 @@ function AuthPage() {
             <p className="mb-6 text-sm text-gray-400">
               {tab === "login"
                 ? "Inicia sesión para acceder a tu cuenta."
-                : "Crea una cuenta ciudadana para reportar incidencias."}
+                : "Crea una cuenta para comenzar a usar la app."}
             </p>
 
             <div className="mb-5 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
@@ -137,7 +137,7 @@ function AuthPage() {
             </p>
           </section>
 
-          <aside className="relative hidden flex-col items-center justify-center overflow-hidden rounded-r-2xl bg-gray-50 p-10 md:flex">
+          <aside className="relative hidden min-h-[620px] flex-col items-center justify-center overflow-hidden bg-gray-50 p-10 md:flex">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-100" />
             <div className="relative z-10 text-center">
               <div className="mx-auto mb-6 flex size-64 items-center justify-center">
