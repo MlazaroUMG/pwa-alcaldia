@@ -4,40 +4,32 @@ import {
   ChevronDown,
   Filter,
   HelpCircle,
-  MapPin,
   Search,
-  UserRound,
 } from "lucide-react"
 
+import {
+  IncidentDetailDialog,
+  type IncidentDetail,
+} from "@/components/admin/IncidentDetailDialog"
+import {
+  IncidentsPagination,
+  type IncidentPageSize,
+} from "@/components/admin/IncidentsPagination"
 import { SubmitterProfileDialog } from "@/components/admin/SubmitterProfileDialog"
 import { LocationPreviewMap } from "@/components/citizen/LocationPreviewMap"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { downloadIncidentImage } from "@/lib/download-incident-image"
+import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 import type { IncidentStatus } from "@/lib/supabase.types"
 
-interface AdminIncident {
-  id: string
-  title: string
-  description: string
-  category: string
-  dependency: string | null
-  call_type_code: number | null
-  call_type_label: string | null
-  status: IncidentStatus
-  created_at: string
-  image_url: string | null
-  user_id: string | null
-  latitude: number | null
-  longitude: number | null
-}
+type AdminIncident = IncidentDetail
 
 type FilterTab = "Todos" | IncidentStatus
 
@@ -104,6 +96,8 @@ export function AdminTicketTable() {
   const [detailIncident, setDetailIncident] = useState<AdminIncident | null>(null)
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [viewingLocation, setViewingLocation] = useState<AdminIncident | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<IncidentPageSize>(10)
 
   useEffect(() => {
     const bootstrapTimer = window.setTimeout(() => {
@@ -116,7 +110,7 @@ export function AdminTicketTable() {
           .order("created_at", { ascending: false })
 
         if (error) {
-          setErrorMessage(error.message)
+          setErrorMessage(toUserFacingError(error))
           setIsLoading(false)
           return
         }
@@ -162,8 +156,16 @@ export function AdminTicketTable() {
     })
   }, [activeTab, incidents, search])
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const pagedIncidents = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
+
   const allSelected =
-    filtered.length > 0 && filtered.every((incident) => selectedIds.has(incident.id))
+    pagedIncidents.length > 0 &&
+    pagedIncidents.every((incident) => selectedIds.has(incident.id))
 
   const toggleSelect = (incidentId: string) => {
     setSelectedIds((previous) => {
@@ -178,12 +180,14 @@ export function AdminTicketTable() {
   }
 
   const toggleAll = () => {
-    setSelectedIds(allSelected ? new Set() : new Set(filtered.map((incident) => incident.id)))
+    setSelectedIds(
+      allSelected ? new Set() : new Set(pagedIncidents.map((incident) => incident.id))
+    )
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col bg-[#f7f9fc] dark:bg-[#0d0b45]">
-      <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-white px-6 py-4 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
+    <section className="min-h-0 flex-1 overflow-auto bg-[#f7f9fc] dark:bg-[#0d0b45]">
+      <div className="flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
         <div className="flex items-center gap-3">
           <h1 className="font-display text-xl font-bold text-gray-900 dark:text-gray-100">
             Incidencias
@@ -200,7 +204,7 @@ export function AdminTicketTable() {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-3 border-b border-gray-100 bg-white px-6 py-3 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
+      <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-6 py-3 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
         <Button
           type="button"
           variant="outline"
@@ -216,7 +220,10 @@ export function AdminTicketTable() {
             type="search"
             placeholder="Buscar incidencia..."
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(1)
+            }}
             className="w-full rounded-lg border border-gray-200 py-1.5 pl-9 pr-8 text-sm placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:bg-indigo-950 dark:text-gray-100"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-xs text-gray-300">
@@ -225,12 +232,15 @@ export function AdminTicketTable() {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center overflow-x-auto border-b border-gray-100 bg-white px-6 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
+      <div className="flex items-center overflow-x-auto border-b border-gray-100 bg-white px-6 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
         {FILTER_TABS.map((tab) => (
           <button
             key={tab}
             type="button"
-            onClick={() => setActiveTab(tab)}
+            onClick={() => {
+              setActiveTab(tab)
+              setPage(1)
+            }}
             className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === tab
                 ? "border-[#5e5adb] text-[#5e5adb]"
@@ -249,18 +259,18 @@ export function AdminTicketTable() {
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
+      <div className="px-6 py-4">
         {errorMessage && (
           <div className="mb-4 rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">
             {errorMessage}
           </div>
         )}
 
-        <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm dark:border-[#2a278f] dark:bg-[#1e1b7a]">
+        <div className="rounded-xl border border-gray-100 bg-white shadow-sm dark:border-[#2a278f] dark:bg-[#1e1b7a]">
           <table className="w-full min-w-[1120px] table-fixed text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50 dark:border-indigo-900 dark:bg-indigo-950/40">
-                <th className="w-10 px-2 py-3 sm:px-4">
+              <tr className="border-b border-gray-100 dark:border-indigo-900">
+                <th className="sticky top-0 z-10 w-10 bg-gray-50 px-2 py-3 sm:px-4 dark:bg-indigo-950">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -269,36 +279,37 @@ export function AdminTicketTable() {
                     aria-label="Seleccionar todas las incidencias visibles"
                   />
                 </th>
-                <th className="w-12 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                <th className="sticky top-0 z-10 w-12 bg-gray-50 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3 dark:bg-indigo-950">
                   #
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                <th className="sticky top-0 z-10 bg-gray-50 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3 dark:bg-indigo-950">
                   Incidencia
                 </th>
-                <th className="w-32 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                <th className="sticky top-0 z-10 w-32 bg-gray-50 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3 dark:bg-indigo-950">
                   Categoría
                 </th>
-                <th className="w-40 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                <th className="sticky top-0 z-10 w-40 bg-gray-50 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3 dark:bg-indigo-950">
                   Dependencia
                 </th>
-                <th className="w-52 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                <th className="sticky top-0 z-10 w-52 bg-gray-50 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3 dark:bg-indigo-950">
                   Tipo de llamada
                 </th>
-                <th className="w-32 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                <th className="sticky top-0 z-10 w-32 bg-gray-50 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3 dark:bg-indigo-950">
                   Estado
                 </th>
-                <th className="w-36 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                <th className="sticky top-0 z-10 w-36 bg-gray-50 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3 dark:bg-indigo-950">
                   Actualizado
                 </th>
-                <th className="w-28 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3">
+                <th className="sticky top-0 z-10 w-28 bg-gray-50 px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-3 dark:bg-indigo-950">
                   Prioridad
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-indigo-900">
-              {filtered.map((incident, index) => {
+              {pagedIncidents.map((incident, index) => {
                 const isSelected = selectedIds.has(incident.id)
                 const priority = getPriority(incident)
+                const rowNumber = (currentPage - 1) * pageSize + index + 1
 
                 return (
                   <tr
@@ -324,7 +335,7 @@ export function AdminTicketTable() {
                       />
                     </td>
                     <td className="px-2 py-3 sm:px-3">
-                      <span className="font-mono text-xs text-gray-500">{index + 1}</span>
+                      <span className="font-mono text-xs text-gray-500">{rowNumber}</span>
                     </td>
                     <td className="px-2 py-3 sm:px-3">
                       <div className="break-words text-sm font-medium text-[#5e5adb] group-hover:underline">
@@ -335,7 +346,7 @@ export function AdminTicketTable() {
                       </div>
                     </td>
                     <td className="px-2 py-3 sm:px-3">
-                      <span className="inline-flex max-w-full rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                      <span className="line-clamp-2 text-xs text-gray-600 dark:text-indigo-200">
                         {incident.category}
                       </span>
                     </td>
@@ -396,22 +407,16 @@ export function AdminTicketTable() {
           )}
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-          <span>
-            {filtered.length} de {incidents.length} incidencias
-          </span>
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant="outline" disabled className="rounded-lg">
-              Anterior
-            </Button>
-            <Button size="sm" className="rounded-lg bg-indigo-500 text-white">
-              1
-            </Button>
-            <Button size="sm" variant="outline" disabled className="rounded-lg">
-              Siguiente
-            </Button>
-          </div>
-        </div>
+        <IncidentsPagination
+          page={currentPage}
+          pageSize={pageSize}
+          totalItems={filtered.length}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size)
+            setPage(1)
+          }}
+        />
       </div>
 
       <SubmitterProfileDialog
@@ -419,84 +424,19 @@ export function AdminTicketTable() {
         onOpenChange={(open) => !open && setSelectedProfileId(null)}
       />
 
-      <Dialog
-        open={detailIncident !== null}
+      <IncidentDetailDialog
+        incident={detailIncident}
         onOpenChange={(open) => !open && setDetailIncident(null)}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{detailIncident?.title}</DialogTitle>
-            <DialogDescription>
-              Detalle administrativo de la incidencia seleccionada.
-            </DialogDescription>
-          </DialogHeader>
-          {detailIncident && (
-            <div className="space-y-4">
-              {detailIncident.image_url && (
-                <img
-                  src={detailIncident.image_url}
-                  alt={`Evidencia de ${detailIncident.title}`}
-                  className="h-56 w-full rounded-xl object-cover"
-                />
-              )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Categoría</p>
-                  <p className="text-sm text-gray-700">{detailIncident.category}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Dependencia</p>
-                  <p className="text-sm text-gray-700">
-                    {detailIncident.dependency ?? "Sin dependencia"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">
-                    Tipo de llamada
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    {detailIncident.call_type_code && detailIncident.call_type_label
-                      ? `${detailIncident.call_type_code} - ${detailIncident.call_type_label}`
-                      : "Sin tipo"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Estado</p>
-                  <Badge className={STATUS_BADGE_STYLES[detailIncident.status]}>
-                    {STATUS_LABELS[detailIncident.status]}
-                  </Badge>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold uppercase text-gray-400">
-                    Descripción
-                  </p>
-                  <p className="text-sm text-gray-700">{detailIncident.description}</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSelectedProfileId(detailIncident.user_id)}
-                >
-                  <UserRound className="size-4" />
-                  Ver perfil ciudadano
-                </Button>
-                {detailIncident.latitude !== null && detailIncident.longitude !== null && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setViewingLocation(detailIncident)}
-                  >
-                    <MapPin className="size-4" />
-                    Ver ubicación
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+        onViewProfile={(userId) => setSelectedProfileId(userId)}
+        onViewLocation={setViewingLocation}
+        onDownloadImage={(incident) => {
+          if (!incident.image_url) {
+            return
+          }
+
+          void downloadIncidentImage(incident.image_url, incident.title)
+        }}
+      />
 
       <Dialog
         open={viewingLocation !== null}

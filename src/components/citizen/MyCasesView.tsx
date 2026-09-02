@@ -21,6 +21,7 @@ interface MyIncident {
   status: IncidentStatus
   created_at: string
   image_url: string | null
+  resolution_image_url: string | null
   resolution_summary: string | null
   resolved_at: string | null
 }
@@ -92,7 +93,7 @@ export function MyCasesView({ userId, onBack }: MyCasesViewProps) {
     const loadCases = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,resolution_summary,resolved_at")
+        .select("id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,resolution_image_url,resolution_summary,resolved_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
 
@@ -154,9 +155,9 @@ export function MyCasesView({ userId, onBack }: MyCasesViewProps) {
         {selectedCase.status === "Resuelto" && (
           <article className="rounded-2xl border border-green-100 bg-green-50 p-4">
             <h3 className="mb-2 text-sm font-semibold text-green-800">Resolución</h3>
-            {selectedCase.image_url && (
+            {selectedCase.resolution_image_url && (
               <img
-                src={selectedCase.image_url}
+                src={selectedCase.resolution_image_url}
                 alt={`Resolución de ${selectedCase.title}`}
                 className="mb-3 h-36 w-full rounded-xl object-cover"
               />

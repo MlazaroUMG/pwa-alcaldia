@@ -50,7 +50,7 @@ interface CommunityPreview {
   call_type_code: number | null
   call_type_label: string | null
   resolution_summary: string | null
-  image_url: string | null
+  resolution_image_url: string | null
   resolved_at: string | null
 }
 
@@ -89,7 +89,7 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
             .order("created_at", { ascending: false }),
           supabase
             .from("incidents")
-            .select("category,dependency,call_type_code,call_type_label,resolution_summary,image_url,resolved_at")
+            .select("category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolved_at")
             .eq("is_public", true)
             .eq("status", "Resuelto")
             .order("resolved_at", { ascending: false })
@@ -185,14 +185,14 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
           onClick={() => onNavigate("wall")}
           className="w-full overflow-hidden rounded-2xl border border-[#2a278f] bg-[#1e1b7a] text-left"
         >
-          {communityPreview?.image_url && (
+          {communityPreview?.resolution_image_url && (
             <img
-              src={communityPreview.image_url}
+              src={communityPreview.resolution_image_url}
               alt={`Resolución comunitaria de ${communityPreview.category}`}
               className="h-36 w-full object-cover"
             />
           )}
-          {!communityPreview?.image_url && (
+          {!communityPreview?.resolution_image_url && (
             <div className="h-36 bg-gradient-to-br from-green-50 to-emerald-100" />
           )}
           <div className="p-3">

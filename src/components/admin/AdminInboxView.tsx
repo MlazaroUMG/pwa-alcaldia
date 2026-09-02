@@ -74,7 +74,7 @@ export function AdminInboxView({ searchQuery, onlyPending }: AdminInboxViewProps
   }, [items, onlyPending, searchQuery])
 
   return (
-    <section className="w-full space-y-4 p-4 sm:p-6">
+    <section className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
       <h2 className="text-xl font-semibold text-foreground">Bandeja de Entrada</h2>
       <div className="grid gap-4 lg:grid-cols-2">
         {filtered.map((incident) => (

@@ -1,5 +1,13 @@
-const CACHE_NAME = "ciudadapp-shell-v1"
+const CACHE_NAME = "ciudadapp-shell-v2"
 const APP_SHELL_URLS = ["/", "/index.html", "/manifest.webmanifest", "/icons.svg"]
+
+function offlineFallback() {
+  return new Response("Sin conexión", {
+    status: 503,
+    statusText: "Offline",
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  })
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -42,7 +50,9 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put("/", responseClone))
           return response
         })
-        .catch(() => caches.match("/"))
+        .catch(() =>
+          caches.match("/").then((cachedResponse) => cachedResponse ?? offlineFallback())
+        )
     )
     return
   }
@@ -53,14 +63,16 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      const networkResponse = fetch(request).then((response) => {
-        if (response.ok) {
-          const responseClone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone))
-        }
+      const networkResponse = fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const responseClone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone))
+          }
 
-        return response
-      })
+          return response
+        })
+        .catch(() => cachedResponse ?? offlineFallback())
 
       return cachedResponse ?? networkResponse
     })

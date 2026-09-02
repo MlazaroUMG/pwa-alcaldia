@@ -13,7 +13,7 @@ interface WallPost {
   call_type_code: number | null
   call_type_label: string | null
   resolution_summary: string | null
-  image_url: string | null
+  resolution_image_url: string | null
   resolved_at: string | null
 }
 
@@ -49,7 +49,7 @@ export function AdminCommunityWallView() {
     const loadPosts = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,category,dependency,call_type_code,call_type_label,resolution_summary,image_url,resolved_at")
+        .select("id,title,category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolved_at")
         .eq("is_public", true)
         .eq("status", "Resuelto")
         .order("resolved_at", { ascending: false })
@@ -128,9 +128,9 @@ export function AdminCommunityWallView() {
                 key={post.id}
                 className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-[#2a278f] dark:bg-[#1e1b7a]"
               >
-                {post.image_url ? (
+                {post.resolution_image_url ? (
                   <img
-                    src={post.image_url}
+                    src={post.resolution_image_url}
                     alt={`Resolución de ${post.category}`}
                     className="h-44 w-full object-cover"
                   />

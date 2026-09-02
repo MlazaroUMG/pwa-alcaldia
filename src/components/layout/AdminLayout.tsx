@@ -170,7 +170,7 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
           </div>
         </header>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {section === "dashboard" && (
             <AdminDashboardView onNavigate={(nextSection) => setSection(nextSection)} />
           )}

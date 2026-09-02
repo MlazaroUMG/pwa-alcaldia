@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 import type { IncidentStatus } from "@/lib/supabase.types"
 
@@ -65,7 +66,7 @@ export function AdminDashboardView({ onNavigate }: AdminDashboardViewProps) {
           .order("created_at", { ascending: false })
 
         if (error) {
-          setErrorMessage(error.message)
+          setErrorMessage(toUserFacingError(error))
           setIsLoading(false)
           return
         }
@@ -143,7 +144,7 @@ export function AdminDashboardView({ onNavigate }: AdminDashboardViewProps) {
   const recentIncidents = incidents.slice(0, 5)
 
   return (
-    <section className="flex-1 overflow-y-auto bg-[#f7f9fc] p-6 dark:bg-[#0d0b45]">
+    <section className="min-h-0 flex-1 overflow-y-auto bg-[#f7f9fc] p-6 dark:bg-[#0d0b45]">
       <div className="w-full">
         <div className="mb-8">
           <h1 className="font-display text-2xl font-bold text-gray-900 dark:text-gray-100">
