@@ -47,6 +47,7 @@ export interface Database {
           status: IncidentStatus
           created_at: string
           image_url: string | null
+          resolution_image_url: string | null
           is_public: boolean
           resolution_summary: string | null
           resolved_at: string | null
@@ -65,6 +66,7 @@ export interface Database {
           status?: IncidentStatus
           created_at?: string
           image_url?: string | null
+          resolution_image_url?: string | null
           is_public?: boolean
           resolution_summary?: string | null
           resolved_at?: string | null
@@ -83,6 +85,7 @@ export interface Database {
           status?: IncidentStatus
           created_at?: string
           image_url?: string | null
+          resolution_image_url?: string | null
           is_public?: boolean
           resolution_summary?: string | null
           resolved_at?: string | null

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { ArrowLeft, CheckCircle2, UsersRound } from "lucide-react"
 
+import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 
 interface CommunityBoardProps {
@@ -13,7 +14,7 @@ interface PublicResolvedIncident {
   call_type_code: number | null
   call_type_label: string | null
   resolution_summary: string | null
-  image_url: string | null
+  resolution_image_url: string | null
   resolved_at: string | null
 }
 
@@ -22,7 +23,7 @@ interface PublicResolvedIncident {
  *
  * Data sanitization is enforced at query time by selecting only
  * `category`, public classification metadata, `resolution_summary`,
- * `image_url`, and `resolved_at`.
+ * `resolution_image_url`, and `resolved_at`.
  * No user identifiers, private descriptions, or location-level metadata are
  * requested or rendered in this component.
  *
@@ -42,13 +43,13 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
 
       const { data, error } = await supabase
         .from("incidents")
-        .select("category,dependency,call_type_code,call_type_label,resolution_summary,image_url,resolved_at")
+        .select("category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolved_at")
         .eq("is_public", true)
         .eq("status", "Resuelto")
         .order("resolved_at", { ascending: false })
 
       if (error) {
-        setErrorMessage(error.message)
+        setErrorMessage(toUserFacingError(error))
         setIsLoading(false)
         return
       }
@@ -101,9 +102,9 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
             key={`${item.category}-${item.resolved_at ?? "sin-fecha"}-${index}`}
             className="overflow-hidden rounded-2xl border border-gray-100 bg-white"
           >
-            {item.image_url ? (
+            {item.resolution_image_url ? (
               <img
-                src={item.image_url}
+                src={item.resolution_image_url}
                 alt={`Resolución publicada de ${item.category}`}
                 className="h-48 w-full object-cover"
                 loading="lazy"

@@ -59,7 +59,7 @@ export function AdminResolvedView() {
   }
 
   return (
-    <section className="w-full space-y-4 p-4 sm:p-6">
+    <section className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
       <header>
         <h2 className="text-xl font-semibold text-foreground">Resueltos</h2>
         <p className="text-sm text-muted-foreground">

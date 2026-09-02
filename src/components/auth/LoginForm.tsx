@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 
 /**
@@ -35,7 +36,7 @@ export function LoginForm() {
     })
 
     if (error) {
-      setErrorMessage(error.message)
+      setErrorMessage(toUserFacingError(error))
       setIsSubmitting(false)
       return
     }
@@ -55,7 +56,7 @@ export function LoginForm() {
     })
 
     if (error) {
-      setErrorMessage(error.message)
+      setErrorMessage(toUserFacingError(error))
       setIsGoogleSubmitting(false)
     }
   }

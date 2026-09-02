@@ -7,9 +7,41 @@ import { AdminLayout } from "@/components/layout/AdminLayout"
 import { CitizenLayout } from "@/components/layout/CitizenLayout"
 import { ThemeProvider } from "@/components/layout/ThemeProvider"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { isNetworkError, toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 import type { UserRole } from "@/lib/supabase.types"
 import "./App.css"
+
+const ROLE_CACHE_PREFIX = "ciudadapp-role:"
+
+function readCachedRole(userId: string): UserRole | null {
+  try {
+    const value = sessionStorage.getItem(`${ROLE_CACHE_PREFIX}${userId}`)
+    if (value === "admin" || value === "citizen") {
+      return value
+    }
+  } catch {
+    // sessionStorage puede no estar disponible.
+  }
+
+  return null
+}
+
+function writeCachedRole(userId: string, nextRole: UserRole) {
+  try {
+    sessionStorage.setItem(`${ROLE_CACHE_PREFIX}${userId}`, nextRole)
+  } catch {
+    // Ignora fallos de almacenamiento.
+  }
+}
+
+function clearCachedRole(userId: string) {
+  try {
+    sessionStorage.removeItem(`${ROLE_CACHE_PREFIX}${userId}`)
+  } catch {
+    // Ignora fallos de almacenamiento.
+  }
+}
 
 type AuthTab = "login" | "signup"
 
@@ -235,7 +267,15 @@ function App() {
         .maybeSingle()
 
       if (error) {
-        setRoleError(error.message)
+        const cachedRole = readCachedRole(sessionUser.id)
+
+        if (isNetworkError(error) && cachedRole) {
+          setRole(cachedRole)
+          setRoleError(null)
+          return
+        }
+
+        setRoleError(toUserFacingError(error))
         setRole(null)
         return
       }
@@ -247,11 +287,12 @@ function App() {
           const profileError = await createCitizenProfileFromGoogleUser(sessionUser)
 
           if (profileError) {
-            setRoleError(profileError.message)
+            setRoleError(toUserFacingError(profileError))
             setRole(null)
             return
           }
 
+          writeCachedRole(sessionUser.id, "citizen")
           setRole("citizen")
           setRoleError(null)
           return
@@ -262,6 +303,7 @@ function App() {
         return
       }
 
+      writeCachedRole(sessionUser.id, profileRole)
       setRole(profileRole)
       setRoleError(null)
     }
@@ -270,6 +312,10 @@ function App() {
   }, [sessionUser])
 
   const handleSignOut = async () => {
+    if (sessionUser?.id) {
+      clearCachedRole(sessionUser.id)
+    }
+
     await supabase.auth.signOut()
   }
 

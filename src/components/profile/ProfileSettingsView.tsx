@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 
 interface ProfileSettingsViewProps {
@@ -98,7 +99,7 @@ export function ProfileSettingsView({
     setIsSaving(false)
 
     if (error) {
-      setErrorMessage(error.message)
+      setErrorMessage(toUserFacingError(error))
       return
     }
 
@@ -130,7 +131,7 @@ export function ProfileSettingsView({
     })
 
     if (error) {
-      setErrorMessage(error.message)
+      setErrorMessage(toUserFacingError(error))
       return
     }
 
@@ -141,7 +142,7 @@ export function ProfileSettingsView({
     <section
       className={
         layout === "admin"
-          ? "w-full space-y-6 p-4 sm:p-6"
+          ? "min-h-0 flex-1 space-y-6 overflow-y-auto p-4 sm:p-6"
           : "space-y-4 rounded-2xl bg-card p-4 shadow-sm"
       }
     >

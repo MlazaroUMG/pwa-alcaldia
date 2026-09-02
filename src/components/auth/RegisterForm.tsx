@@ -13,6 +13,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 import {
   registerFormSchema,
@@ -66,7 +67,7 @@ export function RegisterForm() {
     })
 
     if (error) {
-      setErrorMessage(error.message)
+      setErrorMessage(toUserFacingError(error))
       return
     }
 
@@ -106,7 +107,7 @@ export function RegisterForm() {
     })
 
     if (error) {
-      setErrorMessage(error.message)
+      setErrorMessage(toUserFacingError(error))
       setIsGoogleSubmitting(false)
     }
   }
