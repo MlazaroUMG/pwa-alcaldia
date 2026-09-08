@@ -61,7 +61,9 @@ export function AdminResolvedView() {
   return (
     <section className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
       <header>
-        <h2 className="text-xl font-semibold text-foreground">Resueltos</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          Resueltos
+        </h2>
         <p className="text-sm text-muted-foreground">
           Marca qué incidencias finalizadas se publican en el muro comunitario.
         </p>

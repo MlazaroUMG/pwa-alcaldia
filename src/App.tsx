@@ -3,6 +3,7 @@ import type { Session, User } from "@supabase/supabase-js"
 
 import { LoginForm } from "@/components/auth/LoginForm"
 import { RegisterForm } from "@/components/auth/RegisterForm"
+import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { CitizenLayout } from "@/components/layout/CitizenLayout"
 import { ThemeProvider } from "@/components/layout/ThemeProvider"
@@ -101,13 +102,13 @@ function AuthPage() {
               />
               <div>
                 <div className="font-display text-base font-bold leading-tight text-gray-900">
-                  CiudadApp
+                  PWA Alcaldia
                 </div>
                 <div className="text-xs text-gray-400">Gestión de Incidencias</div>
               </div>
             </div>
 
-            <h1 className="font-display mb-1 text-3xl font-bold text-gray-900">
+            <h1 className="font-display mb-1 text-3xl font-bold text-gray-950">
               Bienvenido
             </h1>
             <p className="mb-6 text-sm text-gray-400">
@@ -115,11 +116,6 @@ function AuthPage() {
                 ? "Inicia sesión para acceder a tu cuenta."
                 : "Crea una cuenta para comenzar a usar la app."}
             </p>
-
-            <div className="mb-5 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
-              El acceso administrativo se habilita desde el perfil asignado en
-              Supabase después de iniciar sesión.
-            </div>
 
             <div className="mb-6 flex rounded-xl border border-gray-200 p-1">
               {(["login", "signup"] as const).map((authTab) => (
@@ -229,6 +225,7 @@ function App() {
   const [role, setRole] = useState<UserRole | null>(null)
   const [isLoadingSession, setIsLoadingSession] = useState(true)
   const [roleError, setRoleError] = useState<string | null>(null)
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
   const sessionUser = session?.user
 
   useEffect(() => {
@@ -245,8 +242,11 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, updatedSession) => {
+    } = supabase.auth.onAuthStateChange((event, updatedSession) => {
       setSession(updatedSession)
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -329,11 +329,15 @@ function App() {
             </main>
           )}
 
-          {!isLoadingSession && !session && (
+          {!isLoadingSession && !session && !isPasswordRecovery && (
             <AuthPage />
           )}
 
-          {!isLoadingSession && session && (
+          {!isLoadingSession && isPasswordRecovery && (
+            <ResetPasswordForm onCompleted={() => setIsPasswordRecovery(false)} />
+          )}
+
+          {!isLoadingSession && session && !isPasswordRecovery && (
             <>
               {roleError && <p className="p-4 text-sm text-destructive">{roleError}</p>}
               {!roleError && role === "citizen" && (

@@ -60,9 +60,15 @@ interface TicketCardProps {
   incident: BoardIncident
   onSelect: (incident: BoardIncident) => void
   onMoveForward: (incident: BoardIncident) => void
+  onMoveBackward: (incident: BoardIncident) => void
 }
 
-function TicketCard({ incident, onSelect, onMoveForward }: TicketCardProps) {
+function TicketCard({
+  incident,
+  onSelect,
+  onMoveForward,
+  onMoveBackward,
+}: TicketCardProps) {
   const priority = getPriority(incident)
   const nextAction =
     incident.status === "Pendiente"
@@ -70,6 +76,7 @@ function TicketCard({ incident, onSelect, onMoveForward }: TicketCardProps) {
       : incident.status === "En Progreso"
         ? "Resolver"
         : null
+  const previousAction = incident.status === "Pendiente" ? null : "Volver"
 
   return (
     <article
@@ -80,20 +87,36 @@ function TicketCard({ incident, onSelect, onMoveForward }: TicketCardProps) {
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${priority.className}`}>
           {priority.label}
         </span>
-        {nextAction && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 rounded-lg px-2 text-xs text-gray-400 opacity-0 transition-all hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100"
-            onClick={(event) => {
-              event.stopPropagation()
-              onMoveForward(incident)
-            }}
-          >
-            {nextAction}
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {previousAction && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 rounded-lg px-2 text-xs text-gray-400 opacity-0 transition-all hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100"
+              onClick={(event) => {
+                event.stopPropagation()
+                onMoveBackward(incident)
+              }}
+            >
+              {previousAction}
+            </Button>
+          )}
+          {nextAction && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 rounded-lg px-2 text-xs text-gray-400 opacity-0 transition-all hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100"
+              onClick={(event) => {
+                event.stopPropagation()
+                onMoveForward(incident)
+              }}
+            >
+              {nextAction}
+            </Button>
+          )}
+        </div>
       </div>
 
       <h3 className="mb-1 text-sm font-semibold leading-snug text-gray-900 dark:text-gray-100">
@@ -133,9 +156,9 @@ function TicketCard({ incident, onSelect, onMoveForward }: TicketCardProps) {
 /**
  * Kanban board for administrative status transitions.
  *
- * Keeps the persisted workflow explicit: `Pendiente` can move to
- * `En Progreso`, and `En Progreso` can move to `Resuelto` through the
- * resolution curation dialog that controls public wall publication.
+ * Conserva el flujo persistido: se puede avanzar Recibido → En proceso → Resuelto
+ * y retroceder Resuelto → En proceso → Recibido. Al salir de Resuelto se limpian
+ * fecha, publicación y evidencia de resolución.
  *
  * @component
  * @module Admin
@@ -222,6 +245,17 @@ export function AdminTicketsBoardView() {
 
     if (incident.status === "En Progreso") {
       setResolvingIncident(incident)
+    }
+  }
+
+  const handleMoveBackward = (incident: BoardIncident) => {
+    if (incident.status === "Resuelto") {
+      void moveToStatus(incident, "En Progreso")
+      return
+    }
+
+    if (incident.status === "En Progreso") {
+      void moveToStatus(incident, "Pendiente")
     }
   }
 
@@ -319,10 +353,6 @@ export function AdminTicketsBoardView() {
           <Button type="button" variant="outline" size="icon" className="rounded-lg">
             <Grid2X2 className="size-4" />
           </Button>
-          <Button type="button" className="rounded-lg bg-indigo-500 text-white hover:bg-indigo-600">
-            <Plus className="size-4" />
-            Nueva
-          </Button>
         </div>
       </div>
 
@@ -369,6 +399,7 @@ export function AdminTicketsBoardView() {
                       incident={incident}
                       onSelect={setDetailIncident}
                       onMoveForward={handleMoveForward}
+                      onMoveBackward={handleMoveBackward}
                     />
                   ))}
 
@@ -390,6 +421,7 @@ export function AdminTicketsBoardView() {
         onViewProfile={setSelectedProfileId}
         onViewLocation={setViewingLocation}
         onMoveForward={handleMoveForward}
+        onMoveBackward={handleMoveBackward}
         isAdvancing={isResolving}
       />
 
