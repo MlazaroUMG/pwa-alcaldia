@@ -1,6 +1,6 @@
 {
-  "name": "CiudadApp - Gestión de Incidencias",
-  "short_name": "CiudadApp",
+  "name": "PWA Alcaldia",
+  "short_name": "PWA Alcaldia",
   "description": "PWA ciudadana para reportar y dar seguimiento a incidencias municipales.",
   "start_url": "/",
   "scope": "/",

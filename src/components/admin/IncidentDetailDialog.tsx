@@ -46,6 +46,7 @@ interface IncidentDetailDialogProps {
   onViewLocation?: (incident: IncidentDetail) => void
   onDownloadImage?: (incident: IncidentDetail) => void
   onMoveForward?: (incident: IncidentDetail) => void
+  onMoveBackward?: (incident: IncidentDetail) => void
   isAdvancing?: boolean
 }
 
@@ -65,6 +66,7 @@ export function IncidentDetailDialog({
   onViewLocation,
   onDownloadImage,
   onMoveForward,
+  onMoveBackward,
   isAdvancing = false,
 }: IncidentDetailDialogProps) {
   const nextActionLabel =
@@ -72,6 +74,12 @@ export function IncidentDetailDialog({
       ? "Mover a En proceso"
       : incident?.status === "En Progreso"
         ? "Resolver incidencia"
+        : null
+  const previousActionLabel =
+    incident?.status === "En Progreso"
+      ? "Volver a Recibido"
+      : incident?.status === "Resuelto"
+        ? "Volver a En proceso"
         : null
 
   return (
@@ -157,6 +165,16 @@ export function IncidentDetailDialog({
                 >
                   <Download className="size-4" />
                   Descargar imagen
+                </Button>
+              )}
+              {onMoveBackward && previousActionLabel && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isAdvancing}
+                  onClick={() => onMoveBackward(incident)}
+                >
+                  {isAdvancing ? "Actualizando..." : previousActionLabel}
                 </Button>
               )}
               {onMoveForward && nextActionLabel && (

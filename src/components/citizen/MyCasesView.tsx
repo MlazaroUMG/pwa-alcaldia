@@ -8,6 +8,7 @@ import type { IncidentStatus } from "@/lib/supabase.types"
 interface MyCasesViewProps {
   userId: string
   onBack?: () => void
+  highlightIncidentId?: string | null
 }
 
 interface MyIncident {
@@ -39,8 +40,8 @@ const STATUS_LABELS: Record<IncidentStatus, string> = {
 }
 
 function StatusTimeline({ status }: { status: IncidentStatus }) {
-  const currentIndex = status === "Pendiente" ? 0 : status === "En Progreso" ? 1 : 3
-  const steps = ["Recibido", "En proceso", "En revisión", "Resuelto"]
+  const currentIndex = status === "Pendiente" ? 0 : status === "En Progreso" ? 1 : 2
+  const steps = ["Recibido", "En proceso", "Resuelto"]
 
   return (
     <>
@@ -84,7 +85,11 @@ function StatusTimeline({ status }: { status: IncidentStatus }) {
  * @module Citizen
  * @returns {JSX.Element} Mobile-ready case timeline cards.
  */
-export function MyCasesView({ userId, onBack }: MyCasesViewProps) {
+export function MyCasesView({
+  userId,
+  onBack,
+  highlightIncidentId = null,
+}: MyCasesViewProps) {
   const [cases, setCases] = useState<MyIncident[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCase, setSelectedCase] = useState<MyIncident | null>(null)
@@ -97,12 +102,21 @@ export function MyCasesView({ userId, onBack }: MyCasesViewProps) {
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
 
-      setCases((data ?? []) as MyIncident[])
+      const nextCases = (data ?? []) as MyIncident[]
+      setCases(nextCases)
+      if (highlightIncidentId) {
+        const highlightedCase = nextCases.find(
+          (incident) => incident.id === highlightIncidentId
+        )
+        if (highlightedCase) {
+          setSelectedCase(highlightedCase)
+        }
+      }
       setIsLoading(false)
     }
 
     void loadCases()
-  }, [userId])
+  }, [userId, highlightIncidentId])
 
   if (selectedCase) {
     return (

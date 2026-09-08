@@ -126,7 +126,7 @@ export function RegisterForm() {
                   <Input
                     placeholder="Juan"
                     autoComplete="given-name"
-                    className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+                    className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
                     {...field}
                   />
                 </FormControl>
@@ -145,7 +145,7 @@ export function RegisterForm() {
                   <Input
                     placeholder="Pérez"
                     autoComplete="family-name"
-                    className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+                    className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
                     {...field}
                   />
                 </FormControl>
@@ -166,7 +166,7 @@ export function RegisterForm() {
                   type="email"
                   placeholder="juan@correo.com"
                   autoComplete="email"
-                  className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+                  className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
                   {...field}
                 />
               </FormControl>
@@ -187,7 +187,7 @@ export function RegisterForm() {
                     inputMode="numeric"
                     placeholder="0000000000000"
                     autoComplete="off"
-                    className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+                    className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
                     {...field}
                   />
                 </FormControl>
@@ -207,7 +207,7 @@ export function RegisterForm() {
                     inputMode="numeric"
                     placeholder="50000000"
                     autoComplete="tel"
-                    className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+                    className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
                     {...field}
                   />
                 </FormControl>
@@ -227,7 +227,7 @@ export function RegisterForm() {
                 <Input
                   placeholder="Zona 18, Ciudad de Guatemala"
                   autoComplete="street-address"
-                  className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+                  className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
                   {...field}
                 />
               </FormControl>
@@ -247,7 +247,7 @@ export function RegisterForm() {
                   type="password"
                   placeholder="********"
                   autoComplete="new-password"
-                  className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+                  className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
                   {...field}
                 />
               </FormControl>
@@ -269,7 +269,7 @@ export function RegisterForm() {
                   type="password"
                   placeholder="********"
                   autoComplete="new-password"
-                  className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+                  className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
                   {...field}
                 />
               </FormControl>

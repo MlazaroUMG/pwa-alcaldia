@@ -1,7 +1,6 @@
 import { useState } from "react"
 import type { ComponentType } from "react"
 import {
-  Bell,
   CheckCheck,
   CircleHelp,
   Columns3,
@@ -18,6 +17,7 @@ import { AdminInboxView } from "@/components/admin/AdminInboxView"
 import { AdminResolvedView } from "@/components/admin/AdminResolvedView"
 import { AdminTicketTable } from "@/components/admin/AdminTicketTable"
 import { AdminTicketsBoardView } from "@/components/admin/AdminTicketsBoardView"
+import { NotificationsMenu } from "@/components/layout/NotificationsMenu"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { UserAvatarMenu } from "@/components/layout/UserAvatarMenu"
 import { ProfileSettingsView } from "@/components/profile/ProfileSettingsView"
@@ -70,6 +70,7 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
   const [section, setSection] = useState<AdminSection>("dashboard")
   const [searchQuery, setSearchQuery] = useState("")
   const [onlyPending, setOnlyPending] = useState(false)
+  const [highlightIncidentId, setHighlightIncidentId] = useState<string | null>(null)
 
   const showSearchBar = section === "inbox"
 
@@ -146,14 +147,13 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Notificaciones"
-              className="relative rounded-xl p-2 text-gray-500 transition-colors hover:bg-gray-100 dark:text-indigo-300 dark:hover:bg-indigo-900"
-            >
-              <Bell className="size-[18px]" />
-              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-red-500" />
-            </button>
+            <NotificationsMenu
+              variant="admin"
+              onSelect={(notification) => {
+                setSection("inbox")
+                setHighlightIncidentId(notification.incident_id)
+              }}
+            />
             <button
               type="button"
               aria-label="Ayuda"
@@ -175,7 +175,11 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
             <AdminDashboardView onNavigate={(nextSection) => setSection(nextSection)} />
           )}
           {section === "inbox" && (
-            <AdminInboxView searchQuery={searchQuery} onlyPending={onlyPending} />
+            <AdminInboxView
+              searchQuery={searchQuery}
+              onlyPending={onlyPending}
+              highlightIncidentId={highlightIncidentId}
+            />
           )}
           {section === "management" && <AdminTicketTable />}
           {section === "board" && <AdminTicketsBoardView />}

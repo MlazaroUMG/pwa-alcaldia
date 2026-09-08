@@ -97,6 +97,39 @@ export interface Database {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          incident_id: string | null
+          type: "incident_received" | "status_changed" | "wall_published"
+          title: string
+          body: string
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          incident_id?: string | null
+          type: "incident_received" | "status_changed" | "wall_published"
+          title: string
+          body: string
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          incident_id?: string | null
+          type?: "incident_received" | "status_changed" | "wall_published"
+          title?: string
+          body?: string
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

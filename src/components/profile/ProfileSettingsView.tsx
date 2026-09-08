@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
+import { cn } from "@/lib/utils"
 
 interface ProfileSettingsViewProps {
   email?: string
@@ -27,10 +28,9 @@ interface ProfileDetails {
 /**
  * Shared account settings view for citizen and administrative modules.
  *
- * Shows the authenticated user's Supabase profile, exposes safe edits for
- * phone/address, provides a password-reset request, and documents account
- * deletion as an administrative operation because deleting Auth users requires
- * privileged server-side credentials.
+ * El perfil ciudadano mantiene contacto y DPI. El administrativo solo muestra
+ * datos básicos, apariencia y cambio de contraseña. La eliminación de cuenta
+ * no se ofrece a administradores.
  *
  * @component
  * @module Profile
@@ -48,7 +48,19 @@ export function ProfileSettingsView({
   const [address, setAddress] = useState("")
   const [message, setMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const isAdminLayout = layout === "admin"
+  const citizenLabelClass = isAdminLayout
+    ? undefined
+    : "text-gray-800 dark:text-gray-100"
+  const citizenEditableInputClass = isAdminLayout
+    ? undefined
+    : "border-gray-400 bg-white text-gray-900 dark:border-input dark:bg-input/30 dark:text-gray-100"
+  const citizenOutlineControlClass = isAdminLayout
+    ? undefined
+    : "border-gray-500 bg-white text-gray-800 hover:bg-gray-100 hover:text-gray-900 dark:border-input dark:bg-input/30 dark:text-gray-100 dark:hover:bg-input/50 dark:hover:text-gray-100"
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -88,12 +100,19 @@ export function ProfileSettingsView({
 
     const { error } = await supabase
       .from("profiles")
-      .update({
-        first_name: firstName.trim() || null,
-        last_name: lastName.trim() || null,
-        phone: phone.trim() || null,
-        address: address.trim() || null,
-      })
+      .update(
+        isAdminLayout
+          ? {
+              first_name: firstName.trim() || null,
+              last_name: lastName.trim() || null,
+            }
+          : {
+              first_name: firstName.trim() || null,
+              last_name: lastName.trim() || null,
+              phone: phone.trim() || null,
+              address: address.trim() || null,
+            }
+      )
       .eq("id", profile.id)
 
     setIsSaving(false)
@@ -119,23 +138,23 @@ export function ProfileSettingsView({
 
   const handlePasswordReset = async () => {
     if (!email) {
-      setErrorMessage("No hay correo disponible para enviar el cambio de contraseña.")
+      setPasswordError("No hay correo disponible para enviar el cambio de contraseña.")
       return
     }
 
-    setMessage(null)
-    setErrorMessage(null)
+    setPasswordMessage(null)
+    setPasswordError(null)
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
     })
 
     if (error) {
-      setErrorMessage(toUserFacingError(error))
+      setPasswordError(toUserFacingError(error))
       return
     }
 
-    setMessage("Se envió un enlace de cambio de contraseña al correo registrado.")
+    setPasswordMessage("Se envió un enlace de cambio de contraseña al correo registrado.")
   }
 
   return (
@@ -143,15 +162,17 @@ export function ProfileSettingsView({
       className={
         layout === "admin"
           ? "min-h-0 flex-1 space-y-6 overflow-y-auto p-4 sm:p-6"
-          : "space-y-4 rounded-2xl bg-card p-4 shadow-sm"
+          : "space-y-4 rounded-2xl bg-card p-4 text-gray-900 shadow-sm dark:text-gray-100"
       }
     >
       <header className="space-y-1">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+        <h2 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100 sm:text-2xl">
           Ajustes de perfil
         </h2>
         <p className="text-sm text-muted-foreground">
-          Consulta tus datos, actualiza información de contacto y cambia la apariencia.
+          {isAdminLayout
+            ? "Consulta tus datos básicos, cambia la apariencia y solicita un enlace de contraseña."
+            : "Consulta tus datos, actualiza información de contacto y cambia la apariencia."}
         </p>
       </header>
 
@@ -159,44 +180,50 @@ export function ProfileSettingsView({
         <div className="space-y-4 rounded-xl border bg-card p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="profile-first-name">Nombre</Label>
+              <Label htmlFor="profile-first-name" className={citizenLabelClass}>
+                Nombre
+              </Label>
               <Input
                 id="profile-first-name"
-                className="mt-1"
+                className={cn("mt-1", citizenEditableInputClass)}
                 value={firstName}
                 onChange={(event) => setFirstName(event.target.value)}
               />
             </div>
             <div>
-              <Label htmlFor="profile-last-name">Apellido</Label>
+              <Label htmlFor="profile-last-name" className={citizenLabelClass}>
+                Apellido
+              </Label>
               <Input
                 id="profile-last-name"
-                className="mt-1"
+                className={cn("mt-1", citizenEditableInputClass)}
                 value={lastName}
                 onChange={(event) => setLastName(event.target.value)}
               />
             </div>
             <div>
               <Label>Correo</Label>
-              <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-foreground">
+              <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
                 {email ?? "No disponible"}
               </p>
             </div>
             <div>
               <Label>Rol</Label>
-              <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-foreground">
+              <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
                 {profile?.role ?? "Cargando..."}
               </p>
             </div>
-            <div>
-              <Label>DPI</Label>
-              <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-foreground">
-                {profile?.dpi ?? "No registrado"}
-              </p>
-            </div>
+            {!isAdminLayout && (
+              <div>
+                <Label>DPI</Label>
+                <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+                  {profile?.dpi ?? "No registrado"}
+                </p>
+              </div>
+            )}
             <div>
               <Label>Fecha de creación</Label>
-              <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-foreground">
+              <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
                 {profile?.created_at
                   ? new Date(profile.created_at).toLocaleString()
                   : "No disponible"}
@@ -204,25 +231,33 @@ export function ProfileSettingsView({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="profile-phone">Teléfono</Label>
-              <Input
-                id="profile-phone"
-                inputMode="numeric"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-              />
+          {!isAdminLayout && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="profile-phone" className={citizenLabelClass}>
+                  Teléfono
+                </Label>
+                <Input
+                  id="profile-phone"
+                  inputMode="numeric"
+                  className={citizenEditableInputClass}
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-address" className={citizenLabelClass}>
+                  Dirección
+                </Label>
+                <Input
+                  id="profile-address"
+                  className={citizenEditableInputClass}
+                  value={address}
+                  onChange={(event) => setAddress(event.target.value)}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="profile-address">Dirección</Label>
-              <Input
-                id="profile-address"
-                value={address}
-                onChange={(event) => setAddress(event.target.value)}
-              />
-            </div>
-          </div>
+          )}
 
           {message && (
             <p className="text-sm text-emerald-700 dark:text-emerald-300">{message}</p>
@@ -237,40 +272,57 @@ export function ProfileSettingsView({
 
         <aside className="space-y-4">
           <div className="rounded-xl border bg-card p-4">
-            <h3 className="text-base font-semibold text-foreground">Apariencia</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              Apariencia
+            </h3>
             <p className="mb-3 text-sm text-muted-foreground">
               Cambia entre modo claro y oscuro.
             </p>
-            <ThemeToggle />
+            <ThemeToggle className={citizenOutlineControlClass} />
           </div>
 
           <div className="rounded-xl border bg-card p-4">
-            <h3 className="text-base font-semibold text-foreground">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
               Seguridad de la cuenta
             </h3>
             <p className="mb-3 text-sm text-muted-foreground">
               Solicita un enlace para cambiar tu contraseña.
             </p>
-            <Button type="button" variant="outline" onClick={handlePasswordReset}>
+            {passwordMessage && (
+              <p className="mb-3 text-sm text-emerald-700 dark:text-emerald-300">
+                {passwordMessage}
+              </p>
+            )}
+            {passwordError && (
+              <p className="mb-3 text-sm text-destructive">{passwordError}</p>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              className={citizenOutlineControlClass}
+              onClick={handlePasswordReset}
+            >
               <KeyRound className="size-4" />
               Cambiar contraseña
             </Button>
           </div>
 
-          <div className="rounded-xl border border-destructive/30 bg-card p-4">
-            <div className="mb-2 flex items-center gap-2 text-destructive">
-              <AlertTriangle className="size-4" />
-              <h3 className="text-base font-semibold">Eliminación de cuenta</h3>
+          {!isAdminLayout && (
+            <div className="rounded-xl border border-destructive/30 bg-card p-4">
+              <div className="mb-2 flex items-center gap-2 text-destructive">
+                <AlertTriangle className="size-4" />
+                <h3 className="text-base font-semibold">Eliminación de cuenta</h3>
+              </div>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Por seguridad, la eliminación real debe realizarse mediante una función
+                administrativa con permisos de servidor.
+              </p>
+              <Button type="button" variant="destructive" disabled>
+                <Trash2 className="size-4" />
+                Solicitar eliminación
+              </Button>
             </div>
-            <p className="mb-3 text-sm text-muted-foreground">
-              Por seguridad, la eliminación real debe realizarse mediante una función
-              administrativa con permisos de servidor.
-            </p>
-            <Button type="button" variant="destructive" disabled>
-              <Trash2 className="size-4" />
-              Solicitar eliminación
-            </Button>
-          </div>
+          )}
         </aside>
       </div>
     </section>

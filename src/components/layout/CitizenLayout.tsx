@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from "react"
 import {
-  Bell,
   Bot,
   ClipboardList,
   House,
   Megaphone,
   Moon,
   PlusCircle,
+  Sun,
 } from "lucide-react"
 
 import { CommunityBoard } from "@/components/citizen/CommunityBoard"
 import { IncidentSubmissionForm } from "@/components/citizen/IncidentSubmissionForm"
 import { MyCasesView } from "@/components/citizen/MyCasesView"
+import { NotificationsMenu } from "@/components/layout/NotificationsMenu"
 import { ProfileSettingsView } from "@/components/profile/ProfileSettingsView"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/hooks/use-theme"
@@ -255,8 +256,9 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
  */
 export function CitizenLayout({ userId, email, onSignOut }: CitizenLayoutProps) {
   const [section, setSection] = useState<CitizenSection>("home")
+  const [highlightIncidentId, setHighlightIncidentId] = useState<string | null>(null)
   const initials = email?.charAt(0).toUpperCase() ?? "C"
-  const { toggleTheme } = useTheme()
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[448px] flex-col bg-[#0d0b45] text-gray-100">
@@ -270,7 +272,7 @@ export function CitizenLayout({ userId, email, onSignOut }: CitizenLayoutProps) 
                 className="size-8 object-contain"
               />
             </div>
-            <span className="font-display text-sm font-bold text-gray-100">CiudadApp</span>
+            <span className="font-display text-sm font-bold text-gray-100">PWA Alcaldia</span>
           </div>
           <div className="flex items-center gap-1.5">
             <button
@@ -279,16 +281,24 @@ export function CitizenLayout({ userId, email, onSignOut }: CitizenLayoutProps) 
               onClick={toggleTheme}
               className="rounded-lg p-1.5 text-indigo-300 transition-colors hover:bg-indigo-900"
             >
-              <Moon className="size-4" />
+              {theme === "dark" ? (
+                <Sun className="size-4 text-gray-100" />
+              ) : (
+                <Moon className="size-4 text-gray-100" />
+              )}
             </button>
-            <button
-              type="button"
-              title="Notificaciones"
-              className="relative rounded-lg p-1.5 text-indigo-300 transition-colors hover:bg-indigo-900"
-            >
-              <Bell className="size-[18px]" />
-              <span className="absolute right-1 top-1 size-1.5 rounded-full bg-red-500" />
-            </button>
+            <NotificationsMenu
+              variant="citizen"
+              onSelect={(notification) => {
+                if (notification.type === "wall_published") {
+                  setSection("wall")
+                  return
+                }
+
+                setHighlightIncidentId(notification.incident_id)
+                setSection("cases")
+              }}
+            />
             <button
               type="button"
               onClick={() => setSection("profile")}
@@ -309,7 +319,11 @@ export function CitizenLayout({ userId, email, onSignOut }: CitizenLayoutProps) 
           <IncidentSubmissionForm userId={userId} onBack={() => setSection("home")} />
         )}
         {section === "cases" && (
-          <MyCasesView userId={userId} onBack={() => setSection("home")} />
+          <MyCasesView
+            userId={userId}
+            highlightIncidentId={highlightIncidentId}
+            onBack={() => setSection("home")}
+          />
         )}
         {section === "wall" && <CommunityBoard onBack={() => setSection("home")} />}
         {section === "profile" && (

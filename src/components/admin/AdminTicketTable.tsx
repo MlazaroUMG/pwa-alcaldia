@@ -198,9 +198,6 @@ export function AdminTicketTable() {
         </div>
         <div className="flex items-center gap-2">
           <HelpCircle className="size-5 text-gray-300" />
-          <Button className="rounded-lg bg-[#5e5adb] text-white hover:bg-indigo-600">
-            Nueva incidencia
-          </Button>
         </div>
       </div>
 

@@ -181,6 +181,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
           size="sm"
           onClick={handleUseCurrentLocation}
           disabled={isLocating}
+          className="border-gray-400 text-gray-800 hover:bg-gray-100"
         >
           <LocateFixed className="size-4" />
           {isLocating ? "Ubicando..." : "Usar mi ubicación actual"}

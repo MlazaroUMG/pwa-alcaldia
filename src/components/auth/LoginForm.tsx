@@ -24,10 +24,12 @@ export function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [resetMessage, setResetMessage] = useState<string | null>(null)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setErrorMessage(null)
+    setResetMessage(null)
     setIsSubmitting(true)
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -46,6 +48,7 @@ export function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     setErrorMessage(null)
+    setResetMessage(null)
     setIsGoogleSubmitting(true)
 
     const { error } = await supabase.auth.signInWithOAuth({
@@ -61,6 +64,27 @@ export function LoginForm() {
     }
   }
 
+  const handleForgotPassword = async () => {
+    setErrorMessage(null)
+    setResetMessage(null)
+
+    if (!email.trim()) {
+      setErrorMessage("Ingresa tu correo para recuperar la contraseña.")
+      return
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: window.location.origin,
+    })
+
+    if (error) {
+      setErrorMessage(toUserFacingError(error))
+      return
+    }
+
+    setResetMessage("Se envió un enlace de recuperación al correo indicado.")
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <div className="space-y-2">
@@ -74,7 +98,7 @@ export function LoginForm() {
           placeholder="ejemplo@correo.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+          className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
           required
         />
       </div>
@@ -90,7 +114,7 @@ export function LoginForm() {
           placeholder="********"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="rounded-xl border-gray-200 px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400"
+          className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
           required
         />
       </div>
@@ -100,12 +124,19 @@ export function LoginForm() {
           <input type="checkbox" className="size-4 rounded accent-blue-500" />
           Recordarme
         </label>
-        <button type="button" className="font-medium text-blue-500 hover:text-blue-700">
+        <button
+          type="button"
+          className="font-medium text-blue-500 hover:text-blue-700"
+          onClick={() => void handleForgotPassword()}
+        >
           ¿Olvidaste tu contraseña?
         </button>
       </div>
 
       {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+      {resetMessage && (
+        <p className="text-sm text-emerald-700 dark:text-emerald-300">{resetMessage}</p>
+      )}
 
       <Button
         type="submit"
