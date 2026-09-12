@@ -51,6 +51,7 @@ export interface Database {
           is_public: boolean
           resolution_summary: string | null
           resolved_at: string | null
+          published_at: string | null
           latitude: number | null
           longitude: number | null
           dependency: string | null
@@ -70,6 +71,7 @@ export interface Database {
           is_public?: boolean
           resolution_summary?: string | null
           resolved_at?: string | null
+          published_at?: string | null
           latitude?: number | null
           longitude?: number | null
           dependency?: string | null
@@ -89,6 +91,7 @@ export interface Database {
           is_public?: boolean
           resolution_summary?: string | null
           resolved_at?: string | null
+          published_at?: string | null
           latitude?: number | null
           longitude?: number | null
           dependency?: string | null
@@ -130,9 +133,69 @@ export interface Database {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      get_community_board: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          category: string
+          resolution_summary: string | null
+          resolution_image_url: string | null
+          resolved_at: string | null
+          published_at: string | null
+        }[]
+      }
+      suggest_incident_duplicates: {
+        Args: {
+          input_latitude: number
+          input_longitude: number
+          input_description: string
+          input_category: string
+          input_dependency: string
+          input_call_type_code: number
+        }
+        Returns: {
+          category: string
+          call_type_code: number | null
+          call_type_label: string | null
+          approximate_distance_m: number
+          text_similarity: number
+          created_at: string
+        }[]
+      }
+      unpublish_expired_wall_posts: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }
