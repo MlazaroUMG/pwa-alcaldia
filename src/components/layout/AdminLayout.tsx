@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   LayoutList,
   Megaphone,
-  SlidersHorizontal,
 } from "lucide-react"
 
 import { AdminCommunityWallView } from "@/components/admin/AdminCommunityWallView"
@@ -17,11 +16,11 @@ import { AdminInboxView } from "@/components/admin/AdminInboxView"
 import { AdminResolvedView } from "@/components/admin/AdminResolvedView"
 import { AdminTicketTable } from "@/components/admin/AdminTicketTable"
 import { AdminTicketsBoardView } from "@/components/admin/AdminTicketsBoardView"
+import { BrandLogo } from "@/components/layout/BrandLogo"
 import { NotificationsMenu } from "@/components/layout/NotificationsMenu"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { UserAvatarMenu } from "@/components/layout/UserAvatarMenu"
 import { ProfileSettingsView } from "@/components/profile/ProfileSettingsView"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 type AdminSection =
@@ -69,7 +68,6 @@ const NAV_ITEMS: AdminNavItem[] = [
 export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
   const [section, setSection] = useState<AdminSection>("dashboard")
   const [searchQuery, setSearchQuery] = useState("")
-  const [onlyPending, setOnlyPending] = useState(false)
   const [highlightIncidentId, setHighlightIncidentId] = useState<string | null>(null)
 
   const showSearchBar = section === "inbox"
@@ -78,13 +76,7 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
     <div className="flex h-screen w-full max-w-full overflow-hidden bg-[#f7f9fc] dark:bg-[#0d0b45]">
       <aside className="flex h-screen w-[72px] shrink-0 flex-col bg-[#151357]">
         <div className="flex h-[72px] shrink-0 items-center justify-center">
-          <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-[#2a278f] bg-white">
-            <img
-              src="/logo.png"
-              alt="Alcaldía Auxiliar Zona 18"
-              className="size-9 object-contain"
-            />
-          </div>
+          <BrandLogo className="size-10" />
         </div>
 
         <nav className="flex flex-1 flex-col items-center gap-1 px-2 py-3">
@@ -129,14 +121,6 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                 />
-                <Button
-                  variant={onlyPending ? "default" : "outline"}
-                  className={onlyPending ? "bg-muni-lightblue text-sky-950 hover:bg-muni-lightblue/90" : ""}
-                  onClick={() => setOnlyPending((previous) => !previous)}
-                >
-                  <SlidersHorizontal className="size-4" />
-                  Filtros
-                </Button>
               </div>
             )}
             {!showSearchBar && (
@@ -177,7 +161,6 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
           {section === "inbox" && (
             <AdminInboxView
               searchQuery={searchQuery}
-              onlyPending={onlyPending}
               highlightIncidentId={highlightIncidentId}
             />
           )}

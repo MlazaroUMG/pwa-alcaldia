@@ -48,6 +48,8 @@ interface IncidentDetailDialogProps {
   onMoveForward?: (incident: IncidentDetail) => void
   onMoveBackward?: (incident: IncidentDetail) => void
   isAdvancing?: boolean
+  isPossibleDuplicate?: boolean
+  suggestedPriority?: "Alta" | "Media"
 }
 
 /**
@@ -68,6 +70,8 @@ export function IncidentDetailDialog({
   onMoveForward,
   onMoveBackward,
   isAdvancing = false,
+  isPossibleDuplicate = false,
+  suggestedPriority,
 }: IncidentDetailDialogProps) {
   const nextActionLabel =
     incident?.status === "Pendiente"
@@ -93,6 +97,18 @@ export function IncidentDetailDialog({
         </DialogHeader>
         {incident && (
           <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {isPossibleDuplicate && (
+                <Badge className="bg-purple-50 text-purple-700">
+                  Posible duplicado
+                </Badge>
+              )}
+              {suggestedPriority && (
+                <Badge className="bg-amber-50 text-amber-700">
+                  Prioridad sugerida: {suggestedPriority}
+                </Badge>
+              )}
+            </div>
             {incident.image_url && (
               <img
                 src={incident.image_url}

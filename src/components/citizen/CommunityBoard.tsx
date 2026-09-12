@@ -10,12 +10,10 @@ interface CommunityBoardProps {
 
 interface PublicResolvedIncident {
   category: string
-  dependency: string | null
-  call_type_code: number | null
-  call_type_label: string | null
   resolution_summary: string | null
   resolution_image_url: string | null
   resolved_at: string | null
+  published_at: string | null
 }
 
 /**
@@ -42,11 +40,7 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
       setErrorMessage(null)
 
       const { data, error } = await supabase
-        .from("incidents")
-        .select("category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolved_at")
-        .eq("is_public", true)
-        .eq("status", "Resuelto")
-        .order("resolved_at", { ascending: false })
+        .rpc("get_community_board")
 
       if (error) {
         setErrorMessage(toUserFacingError(error))
@@ -99,7 +93,7 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
       <div className="space-y-4">
         {items.map((item, index) => (
           <article
-            key={`${item.category}-${item.resolved_at ?? "sin-fecha"}-${index}`}
+            key={`${item.category}-${item.published_at ?? item.resolved_at ?? "sin-fecha"}-${index}`}
             className="overflow-hidden rounded-2xl border border-gray-100 bg-white"
           >
             {item.resolution_image_url ? (
@@ -123,14 +117,6 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
                 </span>
                 <span className="text-xs text-gray-400">{item.category}</span>
               </div>
-              <div className="mb-2 space-y-0.5 text-xs text-gray-400">
-                <p>{item.dependency ?? "Sin dependencia"}</p>
-                <p>
-                  {item.call_type_code && item.call_type_label
-                    ? `${item.call_type_code} - ${item.call_type_label}`
-                    : "Sin tipo de llamada"}
-                </p>
-              </div>
               <h2 className="mb-1 text-sm font-bold text-gray-900">
                 Resolución publicada
               </h2>
@@ -141,8 +127,8 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
               <div className="flex items-center justify-between border-t border-gray-50 pt-3 text-xs text-gray-400">
                 <span>Publicado por la alcaldía</span>
                 <span>
-                  {item.resolved_at
-                    ? new Date(item.resolved_at).toLocaleDateString()
+                  {item.published_at
+                    ? new Date(item.published_at).toLocaleDateString()
                     : "Fecha no disponible"}
                 </span>
               </div>

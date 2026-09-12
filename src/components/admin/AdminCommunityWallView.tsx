@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Clock3, Pencil, Trash2, UsersRound } from "l
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 
 interface WallPost {
@@ -15,9 +16,12 @@ interface WallPost {
   resolution_summary: string | null
   resolution_image_url: string | null
   resolved_at: string | null
+  published_at: string | null
 }
 
-function formatResolvedDate(value: string | null) {
+const WALL_CUTOFF_MS = 30 * 24 * 60 * 60 * 1000
+
+function formatPublishedDate(value: string | null) {
   if (!value) {
     return "Sin fecha"
   }
@@ -44,33 +48,50 @@ export function AdminCommunityWallView() {
   const [posts, setPosts] = useState<WallPost[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftSummary, setDraftSummary] = useState("")
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     const loadPosts = async () => {
-      const { data } = await supabase
+      const cutoff = new Date(Date.now() - WALL_CUTOFF_MS).toISOString()
+      const { data, error } = await supabase
         .from("incidents")
-        .select("id,title,category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolved_at")
+        .select("id,title,category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolved_at,published_at")
         .eq("is_public", true)
         .eq("status", "Resuelto")
-        .order("resolved_at", { ascending: false })
+        .gte("published_at", cutoff)
+        .order("published_at", { ascending: false })
 
+      if (error) {
+        setErrorMessage(toUserFacingError(error))
+        return
+      }
       setPosts((data ?? []) as WallPost[])
+      setErrorMessage(null)
     }
 
     void loadPosts()
   }, [])
 
-  const handleDelete = async (incidentId: string) => {
+  const handleUnpublish = async (incidentId: string) => {
+    const confirmed = window.confirm(
+      "¿Despublicar esta resolución? El registro de la incidencia se conservará."
+    )
+    if (!confirmed) {
+      return
+    }
+
     const { error } = await supabase
       .from("incidents")
       .update({ is_public: false })
       .eq("id", incidentId)
 
     if (error) {
+      setErrorMessage(toUserFacingError(error))
       return
     }
 
     setPosts((previous) => previous.filter((post) => post.id !== incidentId))
+    setErrorMessage(null)
   }
 
   const handleSaveEdit = async (incidentId: string) => {
@@ -80,6 +101,7 @@ export function AdminCommunityWallView() {
       .eq("id", incidentId)
 
     if (error) {
+      setErrorMessage(toUserFacingError(error))
       return
     }
 
@@ -92,6 +114,7 @@ export function AdminCommunityWallView() {
     )
     setEditingId(null)
     setDraftSummary("")
+    setErrorMessage(null)
   }
 
   return (
@@ -103,8 +126,7 @@ export function AdminCommunityWallView() {
               Muro Público
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-indigo-200">
-              Resoluciones visibles para la comunidad. Se eliminan automáticamente a
-              los 30 días.
+              Las resoluciones se despublican a los 30 días; el registro se conserva.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
@@ -112,6 +134,12 @@ export function AdminCommunityWallView() {
             {posts.length} publicaciones activas
           </div>
         </header>
+
+        {errorMessage && (
+          <p className="mb-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">
+            {errorMessage}
+          </p>
+        )}
 
         {posts.length === 0 ? (
           <div className="py-20 text-center text-gray-400">
@@ -172,9 +200,9 @@ export function AdminCommunityWallView() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => void handleDelete(post.id)}
+                        onClick={() => void handleUnpublish(post.id)}
                         className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
-                        title="Quitar del muro"
+                        title="Despublicar del muro"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
@@ -216,7 +244,7 @@ export function AdminCommunityWallView() {
                   <div className="flex items-center justify-between border-t border-gray-50 pt-3 text-xs text-gray-400 dark:border-indigo-900">
                     <div className="flex items-center gap-1">
                       <Clock3 className="size-3" />
-                      {formatResolvedDate(post.resolved_at)}
+                      {formatPublishedDate(post.published_at)}
                     </div>
                     <span>Publicado</span>
                   </div>

@@ -44,6 +44,7 @@ export function ProfileSettingsView({
   const [profile, setProfile] = useState<ProfileDetails | null>(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
+  const [dpi, setDpi] = useState("")
   const [phone, setPhone] = useState("")
   const [address, setAddress] = useState("")
   const [message, setMessage] = useState<string | null>(null)
@@ -82,6 +83,7 @@ export function ProfileSettingsView({
       setProfile(nextProfile)
       setFirstName(nextProfile?.first_name ?? "")
       setLastName(nextProfile?.last_name ?? "")
+      setDpi(nextProfile?.dpi ?? "")
       setPhone(nextProfile?.phone ?? "")
       setAddress(nextProfile?.address ?? "")
     }
@@ -98,6 +100,18 @@ export function ProfileSettingsView({
     setMessage(null)
     setErrorMessage(null)
 
+    if (!isAdminLayout && !profile.dpi && !/^\d{13}$/.test(dpi.trim())) {
+      setIsSaving(false)
+      setErrorMessage("El DPI debe tener 13 dígitos numéricos.")
+      return
+    }
+
+    if (!isAdminLayout && !/^\d{8}$/.test(phone.trim())) {
+      setIsSaving(false)
+      setErrorMessage("El teléfono debe tener 8 dígitos numéricos.")
+      return
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update(
@@ -109,6 +123,7 @@ export function ProfileSettingsView({
           : {
               first_name: firstName.trim() || null,
               last_name: lastName.trim() || null,
+              dpi: profile.dpi ?? (dpi.trim() || null),
               phone: phone.trim() || null,
               address: address.trim() || null,
             }
@@ -128,6 +143,7 @@ export function ProfileSettingsView({
             ...previous,
             first_name: firstName.trim() || null,
             last_name: lastName.trim() || null,
+            dpi: previous.dpi ?? (dpi.trim() || null),
             phone: phone.trim() || null,
             address: address.trim() || null,
           }
@@ -215,10 +231,25 @@ export function ProfileSettingsView({
             </div>
             {!isAdminLayout && (
               <div>
-                <Label>DPI</Label>
-                <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
-                  {profile?.dpi ?? "No registrado"}
-                </p>
+                <Label
+                  htmlFor={profile?.dpi ? undefined : "profile-dpi"}
+                  className={citizenLabelClass}
+                >
+                  DPI
+                </Label>
+                {profile?.dpi ? (
+                  <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+                    {profile.dpi}
+                  </p>
+                ) : (
+                  <Input
+                    id="profile-dpi"
+                    inputMode="numeric"
+                    className={cn("mt-1", citizenEditableInputClass)}
+                    value={dpi}
+                    onChange={(event) => setDpi(event.target.value)}
+                  />
+                )}
               </div>
             )}
             <div>

@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react"
 import type { Session, User } from "@supabase/supabase-js"
 
+import { CompleteGoogleProfileForm } from "@/components/auth/CompleteGoogleProfileForm"
 import { LoginForm } from "@/components/auth/LoginForm"
 import { RegisterForm } from "@/components/auth/RegisterForm"
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm"
 import { AdminLayout } from "@/components/layout/AdminLayout"
+import { BrandLogo } from "@/components/layout/BrandLogo"
 import { CitizenLayout } from "@/components/layout/CitizenLayout"
 import { ThemeProvider } from "@/components/layout/ThemeProvider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { isNetworkError, toUserFacingError } from "@/lib/network-errors"
+import { disablePushNotifications } from "@/lib/push-notifications"
 import { supabase } from "@/lib/supabaseClient"
 import type { UserRole } from "@/lib/supabase.types"
 import "./App.css"
@@ -95,11 +98,7 @@ function AuthPage() {
         <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl md:grid-cols-2">
           <section className="flex flex-col px-6 py-8 sm:px-8 md:px-10 lg:px-12">
             <div className="mb-7 flex items-center gap-3">
-              <img
-                src="/logo.png"
-                alt="Alcaldía Auxiliar Zona 18"
-                className="size-12 rounded-xl object-contain"
-              />
+              <BrandLogo className="size-12 border-slate-200" />
               <div>
                 <div className="font-display text-base font-bold leading-tight text-gray-900">
                   PWA Alcaldia
@@ -226,6 +225,7 @@ function App() {
   const [isLoadingSession, setIsLoadingSession] = useState(true)
   const [roleError, setRoleError] = useState<string | null>(null)
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
+  const [requiresCompleteProfile, setRequiresCompleteProfile] = useState(false)
   const sessionUser = session?.user
 
   useEffect(() => {
@@ -257,12 +257,13 @@ function App() {
       if (!sessionUser?.id) {
         setRole(null)
         setRoleError(null)
+        setRequiresCompleteProfile(false)
         return
       }
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role,dpi,phone")
         .eq("id", sessionUser.id)
         .maybeSingle()
 
@@ -272,6 +273,7 @@ function App() {
         if (isNetworkError(error) && cachedRole) {
           setRole(cachedRole)
           setRoleError(null)
+          setRequiresCompleteProfile(false)
           return
         }
 
@@ -295,6 +297,7 @@ function App() {
           writeCachedRole(sessionUser.id, "citizen")
           setRole("citizen")
           setRoleError(null)
+          setRequiresCompleteProfile(true)
           return
         }
 
@@ -306,6 +309,10 @@ function App() {
       writeCachedRole(sessionUser.id, profileRole)
       setRole(profileRole)
       setRoleError(null)
+      setRequiresCompleteProfile(
+        profileRole === "citizen" &&
+          (!data?.dpi || !data.phone)
+      )
     }
 
     void loadRole()
@@ -316,6 +323,7 @@ function App() {
       clearCachedRole(sessionUser.id)
     }
 
+    await disablePushNotifications().catch(() => undefined)
     await supabase.auth.signOut()
   }
 
@@ -337,7 +345,22 @@ function App() {
             <ResetPasswordForm onCompleted={() => setIsPasswordRecovery(false)} />
           )}
 
-          {!isLoadingSession && session && !isPasswordRecovery && (
+          {!isLoadingSession &&
+            session &&
+            !isPasswordRecovery &&
+            requiresCompleteProfile && (
+              <CompleteGoogleProfileForm
+                userId={session.user.id}
+                email={session.user.email}
+                onCompleted={() => setRequiresCompleteProfile(false)}
+                onSignOut={() => void handleSignOut()}
+              />
+            )}
+
+          {!isLoadingSession &&
+            session &&
+            !isPasswordRecovery &&
+            !requiresCompleteProfile && (
             <>
               {roleError && <p className="p-4 text-sm text-destructive">{roleError}</p>}
               {!roleError && role === "citizen" && (

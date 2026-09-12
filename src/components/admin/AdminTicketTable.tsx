@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   CalendarDays,
-  ChevronDown,
-  Filter,
   HelpCircle,
   Search,
 } from "lucide-react"
 
+import { IncidentsFilterBar } from "@/components/admin/IncidentsFilterBar"
 import {
   IncidentDetailDialog,
   type IncidentDetail,
@@ -17,7 +16,6 @@ import {
 } from "@/components/admin/IncidentsPagination"
 import { SubmitterProfileDialog } from "@/components/admin/SubmitterProfileDialog"
 import { LocationPreviewMap } from "@/components/citizen/LocationPreviewMap"
-import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -25,6 +23,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { downloadIncidentImage } from "@/lib/download-incident-image"
+import {
+  findPossibleDuplicateIds,
+  getSuggestedPriority,
+} from "@/lib/duplicate-suggestions"
+import type { IncidentDependency } from "@/lib/incident-classification"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 import type { IncidentStatus } from "@/lib/supabase.types"
@@ -54,15 +57,12 @@ const STATUS_DOT_STYLES: Record<IncidentStatus, string> = {
 }
 
 function getPriority(incident: AdminIncident) {
-  if (incident.status === "Pendiente") {
+  const suggestion = getSuggestedPriority(incident.category, incident.created_at)
+  if (suggestion === "Alta") {
     return { label: "Alta", className: "bg-orange-50 text-orange-600" }
   }
 
-  if (incident.status === "En Progreso") {
-    return { label: "Media", className: "bg-amber-50 text-amber-600" }
-  }
-
-  return { label: "Baja", className: "bg-emerald-50 text-emerald-600" }
+  return { label: "Media", className: "bg-amber-50 text-amber-600" }
 }
 
 function formatDate(value: string) {
@@ -92,10 +92,15 @@ export function AdminTicketTable() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<FilterTab>("Todos")
   const [search, setSearch] = useState("")
+  const [dependencyFilter, setDependencyFilter] = useState<
+    IncidentDependency | "all"
+  >("all")
+  const [callTypeFilter, setCallTypeFilter] = useState<number | "all">("all")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [detailIncident, setDetailIncident] = useState<AdminIncident | null>(null)
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [viewingLocation, setViewingLocation] = useState<AdminIncident | null>(null)
+  const childDialogParentRef = useRef<AdminIncident | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<IncidentPageSize>(10)
 
@@ -138,12 +143,20 @@ export function AdminTicketTable() {
       { Todos: 0, Pendiente: 0, "En Progreso": 0, Resuelto: 0 }
     )
   }, [incidents])
+  const possibleDuplicateIds = useMemo(
+    () => findPossibleDuplicateIds(incidents),
+    [incidents]
+  )
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
 
     return incidents.filter((incident) => {
       const matchesTab = activeTab === "Todos" || incident.status === activeTab
+      const matchesDependency =
+        dependencyFilter === "all" || incident.dependency === dependencyFilter
+      const matchesCallType =
+        callTypeFilter === "all" || incident.call_type_code === callTypeFilter
       const matchesSearch =
         normalizedSearch.length === 0 ||
         incident.id.toLowerCase().includes(normalizedSearch) ||
@@ -152,9 +165,9 @@ export function AdminTicketTable() {
         incident.dependency?.toLowerCase().includes(normalizedSearch) ||
         incident.call_type_label?.toLowerCase().includes(normalizedSearch)
 
-      return matchesTab && matchesSearch
+      return matchesTab && matchesDependency && matchesCallType && matchesSearch
     })
-  }, [activeTab, incidents, search])
+  }, [activeTab, callTypeFilter, dependencyFilter, incidents, search])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const currentPage = Math.min(page, pageCount)
@@ -185,6 +198,22 @@ export function AdminTicketTable() {
     )
   }
 
+  const closeChildDialog = (
+    closeChild: () => void
+  ) => {
+    const parentIncident = childDialogParentRef.current
+    closeChild()
+
+    // Radix puede solicitar el cierre del padre durante la restauración de foco
+    // de la X. Se restaura el detalle al terminar el evento del diálogo hijo.
+    window.requestAnimationFrame(() => {
+      if (parentIncident) {
+        setDetailIncident(parentIncident)
+      }
+      childDialogParentRef.current = null
+    })
+  }
+
   return (
     <section className="min-h-0 flex-1 overflow-auto bg-[#f7f9fc] dark:bg-[#0d0b45]">
       <div className="flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
@@ -201,16 +230,19 @@ export function AdminTicketTable() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-6 py-3 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
-        <Button
-          type="button"
-          variant="outline"
-          className="rounded-lg border-gray-200 text-gray-600"
-        >
-          <Filter className="size-4" />
-          Filtrar
-          <ChevronDown className="size-3" />
-        </Button>
+      <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 bg-white px-6 py-3 dark:border-[#2a278f] dark:bg-[#1e1b7a]">
+        <IncidentsFilterBar
+          dependency={dependencyFilter}
+          callTypeCode={callTypeFilter}
+          onDependencyChange={(value) => {
+            setDependencyFilter(value)
+            setPage(1)
+          }}
+          onCallTypeChange={(value) => {
+            setCallTypeFilter(value)
+            setPage(1)
+          }}
+        />
         <div className="relative max-w-xs flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-300" />
           <input
@@ -338,6 +370,11 @@ export function AdminTicketTable() {
                       <div className="break-words text-sm font-medium text-[#5e5adb] group-hover:underline">
                         {incident.title}
                       </div>
+                      {possibleDuplicateIds.has(incident.id) && (
+                        <span className="mt-1 inline-flex rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700">
+                          Posible duplicado
+                        </span>
+                      )}
                       <div className="mt-0.5 break-all text-xs text-gray-400">
                         {incident.id}
                       </div>
@@ -418,14 +455,36 @@ export function AdminTicketTable() {
 
       <SubmitterProfileDialog
         profileId={selectedProfileId}
-        onOpenChange={(open) => !open && setSelectedProfileId(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeChildDialog(() => setSelectedProfileId(null))
+          }
+        }}
       />
 
       <IncidentDetailDialog
         incident={detailIncident}
-        onOpenChange={(open) => !open && setDetailIncident(null)}
-        onViewProfile={(userId) => setSelectedProfileId(userId)}
-        onViewLocation={setViewingLocation}
+        onOpenChange={(open) => {
+          if (!open && childDialogParentRef.current === null) {
+            setDetailIncident(null)
+          }
+        }}
+        isPossibleDuplicate={
+          detailIncident ? possibleDuplicateIds.has(detailIncident.id) : false
+        }
+        suggestedPriority={
+          detailIncident
+            ? getSuggestedPriority(detailIncident.category, detailIncident.created_at)
+            : undefined
+        }
+        onViewProfile={(userId) => {
+          childDialogParentRef.current = detailIncident
+          setSelectedProfileId(userId)
+        }}
+        onViewLocation={(incident) => {
+          childDialogParentRef.current = detailIncident
+          setViewingLocation(incident)
+        }}
         onDownloadImage={(incident) => {
           if (!incident.image_url) {
             return
@@ -437,7 +496,11 @@ export function AdminTicketTable() {
 
       <Dialog
         open={viewingLocation !== null}
-        onOpenChange={(open) => !open && setViewingLocation(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeChildDialog(() => setViewingLocation(null))
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>

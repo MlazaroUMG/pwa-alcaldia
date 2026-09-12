@@ -5,18 +5,22 @@ import { Badge } from "@/components/ui/badge"
 import { LocationPreviewMap } from "@/components/citizen/LocationPreviewMap"
 import { SubmitterProfileDialog } from "@/components/admin/SubmitterProfileDialog"
 import { supabase } from "@/lib/supabaseClient"
+import {
+  findPossibleDuplicateIds,
+  getSuggestedPriority,
+} from "@/lib/duplicate-suggestions"
 import type { IncidentStatus } from "@/lib/supabase.types"
 import { cn } from "@/lib/utils"
 
 interface AdminInboxViewProps {
   searchQuery: string
-  onlyPending: boolean
   highlightIncidentId?: string | null
 }
 
 interface InboxIncident {
   id: string
   title: string
+  description: string
   category: string
   dependency: string | null
   call_type_code: number | null
@@ -41,19 +45,20 @@ interface InboxIncident {
  */
 export function AdminInboxView({
   searchQuery,
-  onlyPending,
   highlightIncidentId = null,
 }: AdminInboxViewProps) {
   const [items, setItems] = useState<InboxIncident[]>([])
   const [profileNames, setProfileNames] = useState<Record<string, string>>({})
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
-  const [expandedLocationId, setExpandedLocationId] = useState<string | null>(null)
+  const [expandedLocationIds, setExpandedLocationIds] = useState<Set<string>>(
+    new Set()
+  )
 
   useEffect(() => {
     const loadInbox = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,category,dependency,call_type_code,call_type_label,status,created_at,user_id,latitude,longitude")
+        .select("id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,user_id,latitude,longitude")
         .in("status", ["Pendiente", "En Progreso"])
         .order("created_at", { ascending: false })
 
@@ -112,18 +117,20 @@ export function AdminInboxView({
         incident.call_type_label?.toLowerCase().includes(normalizedQuery) ||
         incident.title.toLowerCase().includes(normalizedQuery)
 
-      const matchesPending = !onlyPending || incident.status === "Pendiente"
-
-      return matchesSearch && matchesPending
+      return matchesSearch
     })
-  }, [items, onlyPending, searchQuery])
+  }, [items, searchQuery])
+  const possibleDuplicateIds = useMemo(
+    () => findPossibleDuplicateIds(items),
+    [items]
+  )
 
   return (
     <section className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
         Bandeja de Entrada
       </h2>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         {filtered.map((incident) => (
           <article
             id={`inbox-${incident.id}`}
@@ -140,16 +147,18 @@ export function AdminInboxView({
                 </p>
                 <p className="text-sm text-muted-foreground">{incident.id}</p>
               </div>
-              {incident.status === "Pendiente" ? (
-                <Badge className="bg-muni-red text-white">
+              <div className="flex flex-wrap justify-end gap-1">
+                <Badge className="bg-amber-50 text-amber-700">
                   <AlertTriangle className="size-3" />
-                  Prioridad alta
+                  Prioridad sugerida:{" "}
+                  {getSuggestedPriority(incident.category, incident.created_at)}
                 </Badge>
-              ) : (
-                <Badge variant="outline" className="border-muni-lightblue text-sky-700">
-                  En seguimiento
-                </Badge>
-              )}
+                {possibleDuplicateIds.has(incident.id) && (
+                  <Badge className="bg-purple-50 text-purple-700">
+                    Posible duplicado
+                  </Badge>
+                )}
+              </div>
             </div>
 
             <div className="space-y-0.5 text-sm text-muted-foreground">
@@ -184,18 +193,26 @@ export function AdminInboxView({
                   type="button"
                   className="inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
                   onClick={() =>
-                    setExpandedLocationId((previous) =>
-                      previous === incident.id ? null : incident.id
-                    )
+                    setExpandedLocationIds((previous) => {
+                      const next = new Set(previous)
+                      if (next.has(incident.id)) {
+                        next.delete(incident.id)
+                      } else {
+                        next.add(incident.id)
+                      }
+                      return next
+                    })
                   }
                 >
                   <MapPin className="size-4" />
-                  {expandedLocationId === incident.id ? "Ocultar ubicación" : "Ver ubicación"}
+                  {expandedLocationIds.has(incident.id)
+                    ? "Ocultar ubicación"
+                    : "Ver ubicación"}
                 </button>
               )}
             </div>
 
-            {expandedLocationId === incident.id &&
+            {expandedLocationIds.has(incident.id) &&
               incident.latitude !== null &&
               incident.longitude !== null && (
                 <LocationPreviewMap
