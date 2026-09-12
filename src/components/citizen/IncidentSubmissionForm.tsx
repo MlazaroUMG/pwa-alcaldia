@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { ArrowLeft, Camera, ImagePlus, MapPin } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { DuplicateIncidentDialog } from "@/components/citizen/DuplicateIncidentDialog"
 import {
   Form,
   FormControl,
@@ -23,6 +24,10 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabaseClient"
+import {
+  fetchDuplicateSuggestions,
+  type DuplicateSuggestion,
+} from "@/lib/duplicate-suggestions"
 import { LocationPicker } from "@/components/citizen/LocationPicker"
 import {
   INCIDENT_CALL_TYPES_BY_DEPENDENCY,
@@ -60,6 +65,12 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
   const [photoInputKey, setPhotoInputKey] = useState(0)
   const [submitFeedback, setSubmitFeedback] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [duplicateSuggestions, setDuplicateSuggestions] = useState<
+    DuplicateSuggestion[]
+  >([])
+  const [pendingPayload, setPendingPayload] =
+    useState<IncidentSubmissionPayload | null>(null)
+  const [isConfirmingDuplicate, setIsConfirmingDuplicate] = useState(false)
 
   const form = useForm<IncidentFormValues>({
     resolver: zodResolver(incidentFormSchema),
@@ -97,34 +108,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
     }
   }, [photoPreviewUrl])
 
-  const handleSubmit = async (values: IncidentFormValues) => {
-    setSubmitFeedback(null)
-    setSubmitError(null)
-
-    if (!values.dependency || values.callTypeCode === undefined) {
-      setSubmitError("Selecciona la dependencia y el tipo de llamada.")
-      return
-    }
-
-    const selectedCallType = getCallTypeByCode(values.dependency, values.callTypeCode)
-
-    if (!selectedCallType) {
-      setSubmitError("El tipo de llamada no corresponde a la dependencia seleccionada.")
-      return
-    }
-
-    const payload: IncidentSubmissionPayload = {
-      title: values.title,
-      description: values.description,
-      category: values.category,
-      dependency: values.dependency,
-      callTypeCode: selectedCallType.code,
-      callTypeLabel: selectedCallType.label,
-      photo: values.photo ?? null,
-      latitude: values.latitude,
-      longitude: values.longitude,
-    }
-
+  const persistIncident = async (payload: IncidentSubmissionPayload) => {
     let imageUrl: string | null = null
 
     if (payload.photo) {
@@ -144,7 +128,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
 
       if (uploadError) {
         setSubmitError("No se pudo subir la fotografía. Intenta nuevamente.")
-        return
+        return false
       }
 
       const { data: publicUrlData } = supabase.storage
@@ -173,7 +157,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
 
     if (insertError) {
       setSubmitError("No se pudo registrar la incidencia. Verifica los datos e intenta nuevamente.")
-      return
+      return false
     }
 
     form.reset({
@@ -189,11 +173,66 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
     })
     setPhotoInputKey((previous) => previous + 1)
     setSubmitFeedback("Incidencia registrada correctamente.")
+    return true
+  }
+
+  const handleSubmit = async (values: IncidentFormValues) => {
+    setSubmitFeedback(null)
+    setSubmitError(null)
+
+    if (!values.dependency || values.callTypeCode === undefined) {
+      setSubmitError("Selecciona la dependencia y el tipo de llamada.")
+      return
+    }
+
+    const selectedCallType = getCallTypeByCode(values.dependency, values.callTypeCode)
+
+    if (!selectedCallType) {
+      setSubmitError("El tipo de llamada no corresponde a la dependencia seleccionada.")
+      return
+    }
+
+    const payload: IncidentSubmissionPayload = {
+      title: values.title,
+      description: values.description,
+      category: values.category,
+      dependency: values.dependency,
+      callTypeCode: selectedCallType.code,
+      callTypeLabel: selectedCallType.label,
+      photo: values.photo ?? null,
+      latitude: values.latitude,
+      longitude: values.longitude,
+    }
+
+    const { suggestions, error } = await fetchDuplicateSuggestions(payload)
+
+    if (!error && suggestions.length > 0) {
+      setPendingPayload(payload)
+      setDuplicateSuggestions(suggestions)
+      return
+    }
+
+    await persistIncident(payload)
+  }
+
+  const handleConfirmDuplicate = async () => {
+    if (!pendingPayload) {
+      return
+    }
+
+    setIsConfirmingDuplicate(true)
+    const wasSaved = await persistIncident(pendingPayload)
+    setIsConfirmingDuplicate(false)
+    if (wasSaved) {
+      setPendingPayload(null)
+      setDuplicateSuggestions([])
+    }
   }
 
   return (
-    <Form {...form}>
-      <form
+    <>
+      <Form {...form}>
+        <form
         onSubmit={form.handleSubmit(handleSubmit)}
         className="flex w-full flex-col gap-5 px-4 py-5"
         noValidate
@@ -500,7 +539,17 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
             {submitFeedback}
           </p>
         )}
-      </form>
-    </Form>
+        </form>
+      </Form>
+      <DuplicateIncidentDialog
+        suggestions={duplicateSuggestions}
+        isSubmitting={isConfirmingDuplicate}
+        onCancel={() => {
+          setPendingPayload(null)
+          setDuplicateSuggestions([])
+        }}
+        onConfirm={() => void handleConfirmDuplicate()}
+      />
+    </>
   )
 }

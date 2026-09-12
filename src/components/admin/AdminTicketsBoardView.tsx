@@ -1,9 +1,6 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   FileText,
-  Filter,
-  Grid2X2,
-  Plus,
   Search,
   UserRound,
 } from "lucide-react"
@@ -22,6 +19,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  findPossibleDuplicateIds,
+  getSuggestedPriority,
+} from "@/lib/duplicate-suggestions"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 import type { IncidentStatus } from "@/lib/supabase.types"
@@ -45,19 +46,16 @@ const COLUMNS: Array<{
 ]
 
 function getPriority(incident: BoardIncident) {
-  if (incident.status === "Pendiente") {
-    return { label: "Media", className: "bg-amber-50 text-amber-600" }
-  }
-
-  if (incident.status === "En Progreso") {
+  if (getSuggestedPriority(incident.category, incident.created_at) === "Alta") {
     return { label: "Alta", className: "bg-orange-50 text-orange-600" }
   }
 
-  return { label: "Alta", className: "bg-orange-50 text-orange-600" }
+  return { label: "Media", className: "bg-amber-50 text-amber-600" }
 }
 
 interface TicketCardProps {
   incident: BoardIncident
+  isPossibleDuplicate: boolean
   onSelect: (incident: BoardIncident) => void
   onMoveForward: (incident: BoardIncident) => void
   onMoveBackward: (incident: BoardIncident) => void
@@ -65,6 +63,7 @@ interface TicketCardProps {
 
 function TicketCard({
   incident,
+  isPossibleDuplicate,
   onSelect,
   onMoveForward,
   onMoveBackward,
@@ -122,6 +121,11 @@ function TicketCard({
       <h3 className="mb-1 text-sm font-semibold leading-snug text-gray-900 dark:text-gray-100">
         {incident.title}
       </h3>
+      {isPossibleDuplicate && (
+        <span className="mb-2 inline-flex rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700">
+          Posible duplicado
+        </span>
+      )}
       <p className="mb-3 line-clamp-2 text-xs text-gray-400">{incident.description}</p>
 
       {incident.image_url && (
@@ -172,6 +176,7 @@ export function AdminTicketsBoardView() {
   const [isResolving, setIsResolving] = useState(false)
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [viewingLocation, setViewingLocation] = useState<BoardIncident | null>(null)
+  const childDialogParentRef = useRef<BoardIncident | null>(null)
 
   useEffect(() => {
     const bootstrapTimer = window.setTimeout(() => {
@@ -210,6 +215,10 @@ export function AdminTicketsBoardView() {
         incident.id.toLowerCase().includes(normalizedSearch)
     )
   }, [incidents, search])
+  const possibleDuplicateIds = useMemo(
+    () => findPossibleDuplicateIds(incidents),
+    [incidents]
+  )
 
   const moveToStatus = async (incident: BoardIncident, nextStatus: IncidentStatus) => {
     const { error } = await supabase
@@ -257,6 +266,20 @@ export function AdminTicketsBoardView() {
     if (incident.status === "En Progreso") {
       void moveToStatus(incident, "Pendiente")
     }
+  }
+
+  const closeChildDialog = (closeChild: () => void) => {
+    const parentIncident = childDialogParentRef.current
+    closeChild()
+
+    // Radix puede solicitar el cierre del padre durante la restauración de foco
+    // de la X. Se restaura el detalle al terminar el evento del diálogo hijo.
+    window.requestAnimationFrame(() => {
+      if (parentIncident) {
+        setDetailIncident(parentIncident)
+      }
+      childDialogParentRef.current = null
+    })
   }
 
   const handleResolveSubmit = async (payload: ResolveIncidentPayload) => {
@@ -345,14 +368,6 @@ export function AdminTicketsBoardView() {
               className="w-56 rounded-lg border border-gray-200 py-1.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:bg-indigo-950 dark:text-gray-100"
             />
           </div>
-          <Button type="button" variant="outline" className="rounded-lg border-gray-200">
-            <Filter className="size-4" />
-            Filtrar
-          </Button>
-          <div className="h-5 w-px bg-gray-200" />
-          <Button type="button" variant="outline" size="icon" className="rounded-lg">
-            <Grid2X2 className="size-4" />
-          </Button>
         </div>
       </div>
 
@@ -371,7 +386,7 @@ export function AdminTicketsBoardView() {
 
             return (
               <div key={column.status} className="flex min-h-0 min-w-0 flex-col">
-                <div className="mb-3 flex shrink-0 items-center justify-between px-1">
+                <div className="mb-3 flex shrink-0 items-center px-1">
                   <div className="flex items-center gap-2">
                     <span className={`size-2.5 rounded-full ${column.color}`} />
                     <span className="text-sm font-semibold text-gray-700 dark:text-gray-100">
@@ -381,13 +396,6 @@ export function AdminTicketsBoardView() {
                       {columnIncidents.length}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                    aria-label={`Agregar incidencia a ${column.label}`}
-                  >
-                    <Plus className="size-3.5" />
-                  </button>
                 </div>
 
                 <div className={`mb-3 h-1 shrink-0 rounded-full ${column.accent} opacity-80`} />
@@ -397,6 +405,7 @@ export function AdminTicketsBoardView() {
                     <TicketCard
                       key={incident.id}
                       incident={incident}
+                      isPossibleDuplicate={possibleDuplicateIds.has(incident.id)}
                       onSelect={setDetailIncident}
                       onMoveForward={handleMoveForward}
                       onMoveBackward={handleMoveBackward}
@@ -417,9 +426,32 @@ export function AdminTicketsBoardView() {
 
       <IncidentDetailDialog
         incident={detailIncident}
-        onOpenChange={(open) => !open && setDetailIncident(null)}
-        onViewProfile={setSelectedProfileId}
-        onViewLocation={setViewingLocation}
+        onOpenChange={(open) => {
+          const hasResolutionDialog = resolvingIncident !== null
+          if (
+            !open &&
+            childDialogParentRef.current === null &&
+            !hasResolutionDialog
+          ) {
+            setDetailIncident(null)
+          }
+        }}
+        isPossibleDuplicate={
+          detailIncident ? possibleDuplicateIds.has(detailIncident.id) : false
+        }
+        suggestedPriority={
+          detailIncident
+            ? getSuggestedPriority(detailIncident.category, detailIncident.created_at)
+            : undefined
+        }
+        onViewProfile={(userId) => {
+          childDialogParentRef.current = detailIncident
+          setSelectedProfileId(userId)
+        }}
+        onViewLocation={(incident) => {
+          childDialogParentRef.current = detailIncident
+          setViewingLocation(incident)
+        }}
         onMoveForward={handleMoveForward}
         onMoveBackward={handleMoveBackward}
         isAdvancing={isResolving}
@@ -427,12 +459,20 @@ export function AdminTicketsBoardView() {
 
       <SubmitterProfileDialog
         profileId={selectedProfileId}
-        onOpenChange={(open) => !open && setSelectedProfileId(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeChildDialog(() => setSelectedProfileId(null))
+          }
+        }}
       />
 
       <Dialog
         open={viewingLocation !== null}
-        onOpenChange={(open) => !open && setViewingLocation(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeChildDialog(() => setViewingLocation(null))
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>
