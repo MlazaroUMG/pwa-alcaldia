@@ -2,16 +2,27 @@
   "name": "PWA Alcaldia",
   "short_name": "PWA Alcaldia",
   "description": "PWA ciudadana para reportar y dar seguimiento a incidencias municipales.",
+  "id": "/",
+  "lang": "es-GT",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["government", "utilities"],
   "background_color": "#edf3fb",
   "theme_color": "#1700a5",
   "icons": [
     {
-      "src": "/icons.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

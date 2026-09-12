@@ -12,6 +12,7 @@ import {
 import { CommunityBoard } from "@/components/citizen/CommunityBoard"
 import { IncidentSubmissionForm } from "@/components/citizen/IncidentSubmissionForm"
 import { MyCasesView } from "@/components/citizen/MyCasesView"
+import { BrandLogo } from "@/components/layout/BrandLogo"
 import { NotificationsMenu } from "@/components/layout/NotificationsMenu"
 import { ProfileSettingsView } from "@/components/profile/ProfileSettingsView"
 import { Button } from "@/components/ui/button"
@@ -47,12 +48,10 @@ interface CitizenIncidentSummary {
 
 interface CommunityPreview {
   category: string
-  dependency: string | null
-  call_type_code: number | null
-  call_type_label: string | null
   resolution_summary: string | null
   resolution_image_url: string | null
   resolved_at: string | null
+  published_at: string | null
 }
 
 function getDisplayName(profile: CitizenProfile | null, email?: string) {
@@ -89,11 +88,7 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
             .eq("user_id", userId)
             .order("created_at", { ascending: false }),
           supabase
-            .from("incidents")
-            .select("category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolved_at")
-            .eq("is_public", true)
-            .eq("status", "Resuelto")
-            .order("resolved_at", { ascending: false })
+            .rpc("get_community_board")
             .limit(1)
             .maybeSingle(),
         ])
@@ -205,16 +200,6 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
                 ? `Resolución de ${communityPreview.category}`
                 : "Sin publicaciones recientes"}
             </h3>
-            {communityPreview && (
-              <p className="mt-1 line-clamp-1 text-xs text-indigo-300">
-                {communityPreview.dependency ?? "Sin dependencia"}
-              </p>
-            )}
-            {communityPreview?.call_type_code && communityPreview.call_type_label && (
-              <p className="mt-0.5 line-clamp-1 text-xs text-indigo-300">
-                {`${communityPreview.call_type_code} - ${communityPreview.call_type_label}`}
-              </p>
-            )}
             <p className="mt-1 line-clamp-2 text-xs text-indigo-300">
               {communityPreview?.resolution_summary ??
                 "Las resoluciones públicas aparecerán aquí cuando sean aprobadas."}
@@ -233,8 +218,8 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
               Detección inteligente
             </div>
             <div className="mt-0.5 text-xs text-purple-400">
-              Próximamente: apoyo para detectar reportes duplicados antes de
-              saturar el sistema.
+              Antes de enviar, se buscan reportes abiertos similares y cercanos.
+              La decisión final siempre es del ciudadano.
             </div>
           </div>
         </div>
@@ -265,13 +250,7 @@ export function CitizenLayout({ userId, email, onSignOut }: CitizenLayoutProps) 
       <header className="sticky top-0 z-30 shrink-0 border-b border-[#2a278f] bg-[#1e1b7a] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-white">
-              <img
-                src="/logo.png"
-                alt="Alcaldía Auxiliar Zona 18"
-                className="size-8 object-contain"
-              />
-            </div>
+            <BrandLogo className="size-9 rounded-lg border-gray-100" />
             <span className="font-display text-sm font-bold text-gray-100">PWA Alcaldia</span>
           </div>
           <div className="flex items-center gap-1.5">

@@ -1,3 +1,5 @@
+import { BrandLogo } from "@/components/layout/BrandLogo"
+
 /**
  * Top-level branded header for the Alcaldia PWA.
  *
@@ -21,11 +23,7 @@ export function MainHeader() {
           </h1>
         </div>
 
-        <img
-          src="/logo.png"
-          alt="Alcaldía Auxiliar Zona 18"
-          className="h-12 w-auto shrink-0"
-        />
+        <BrandLogo className="size-12 border-white/30" />
       </div>
     </header>
   )

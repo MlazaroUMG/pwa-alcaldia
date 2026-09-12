@@ -45,11 +45,16 @@ function StatusTimeline({ status }: { status: IncidentStatus }) {
 
   return (
     <>
-      <div className="mt-3 flex items-center">
+      <div className="mt-3 flex items-center px-1">
         {steps.map((step, index) => {
           const done = index <= currentIndex
           return (
-            <div key={step} className="flex flex-1 items-center">
+            <div
+              key={step}
+              className={`flex items-center ${
+                index < steps.length - 1 ? "flex-1" : ""
+              }`}
+            >
               <div
                 className={`size-2.5 shrink-0 rounded-full transition-colors ${
                   done ? "bg-indigo-500" : "bg-gray-300"
@@ -66,9 +71,16 @@ function StatusTimeline({ status }: { status: IncidentStatus }) {
           )
         })}
       </div>
-      <div className="mt-1 flex justify-between text-xs text-gray-400">
-        {steps.map((step) => (
-          <span key={step}>{step}</span>
+      <div className="mt-1 grid grid-cols-3 text-xs text-gray-400">
+        {steps.map((step, index) => (
+          <span
+            key={step}
+            className={
+              index === 0 ? "text-left" : index === steps.length - 1 ? "text-right" : "text-center"
+            }
+          >
+            {step}
+          </span>
         ))}
       </div>
     </>

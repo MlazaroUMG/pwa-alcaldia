@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 
+import { BrandLogo } from "@/components/layout/BrandLogo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -62,11 +63,7 @@ export function ResetPasswordForm({ onCompleted }: ResetPasswordFormProps) {
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center justify-center">
         <section className="w-full rounded-2xl border border-slate-200 bg-white px-6 py-8 shadow-xl sm:px-8">
           <div className="mb-6 flex items-center gap-3">
-            <img
-              src="/logo.png"
-              alt="Alcaldía Auxiliar Zona 18"
-              className="size-12 rounded-xl object-contain"
-            />
+            <BrandLogo className="size-12 border-slate-200" />
             <div>
               <div className="font-display text-base font-bold leading-tight text-gray-900">
                 PWA Alcaldia

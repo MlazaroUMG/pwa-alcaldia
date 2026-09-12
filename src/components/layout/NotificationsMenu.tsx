@@ -15,6 +15,10 @@ import {
   markNotificationRead,
   type AppNotification,
 } from "@/lib/notifications"
+import {
+  enablePushNotifications,
+  supportsWebPush,
+} from "@/lib/push-notifications"
 import { cn } from "@/lib/utils"
 
 interface NotificationsMenuProps {
@@ -45,6 +49,7 @@ export function NotificationsMenu({
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [pushMessage, setPushMessage] = useState<string | null>(null)
 
   const loadNotifications = async () => {
     const { notifications: nextNotifications, error } = await fetchUserNotifications()
@@ -84,6 +89,16 @@ export function NotificationsMenu({
     }
 
     onSelect(notification)
+  }
+
+  const handleEnablePush = async () => {
+    setPushMessage(null)
+    try {
+      await enablePushNotifications()
+      setPushMessage("Notificaciones del dispositivo activadas.")
+    } catch (error) {
+      setPushMessage(toUserFacingError(error))
+    }
   }
 
   return (
@@ -127,11 +142,20 @@ export function NotificationsMenu({
         {notifications.map((notification) => (
           <DropdownMenuItem
             key={notification.id}
-            className="flex-col items-start gap-1 py-2"
+            className="relative flex-col items-start gap-1 py-2 pl-5"
             onSelect={() => {
               void handleSelect(notification)
             }}
           >
+            {notification.read_at === null && (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="absolute left-2 top-3 size-2 rounded-full bg-red-500"
+                />
+                <span className="sr-only">No leída</span>
+              </>
+            )}
             <span
               className={cn(
                 "text-sm",
@@ -148,6 +172,21 @@ export function NotificationsMenu({
             </span>
           </DropdownMenuItem>
         ))}
+        {supportsWebPush() && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => {
+                void handleEnablePush()
+              }}
+            >
+              Activar notificaciones del dispositivo
+            </DropdownMenuItem>
+          </>
+        )}
+        {pushMessage && (
+          <p className="px-2 py-2 text-xs text-muted-foreground">{pushMessage}</p>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
