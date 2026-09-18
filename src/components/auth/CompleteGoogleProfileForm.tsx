@@ -16,22 +16,25 @@ import {
 import { Input } from "@/components/ui/input"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
+import {
+  CONSENT_VERSION,
+  FIELD_LIMITS,
+  dpiSchema,
+  firstNameSchema,
+  lastNameSchema,
+  optionalAddressSchema,
+  phoneSchema,
+} from "@/lib/validation"
 
 const completeGoogleProfileSchema = z.object({
-  dpi: z
-    .string()
-    .trim()
-    .regex(/^\d{13}$/, "El DPI debe tener 13 dígitos numéricos."),
-  phone: z
-    .string()
-    .trim()
-    .regex(/^\d{8}$/, "El teléfono debe tener 8 dígitos numéricos."),
-  address: z
-    .string()
-    .trim()
-    .max(200, "La dirección no puede superar 200 caracteres.")
-    .optional()
-    .or(z.literal("")),
+  firstName: firstNameSchema,
+  lastName: lastNameSchema,
+  dpi: dpiSchema,
+  phone: phoneSchema,
+  address: optionalAddressSchema,
+  acceptedTerms: z.boolean().refine((value) => value === true, {
+    message: "Debes aceptar el aviso de privacidad y las reglas de uso.",
+  }),
 })
 
 type CompleteGoogleProfileValues = z.infer<typeof completeGoogleProfileSchema>
@@ -41,10 +44,12 @@ interface CompleteGoogleProfileFormProps {
   email?: string
   onCompleted: () => void
   onSignOut: () => void
+  onOpenPrivacy: () => void
+  onOpenUsage: () => void
 }
 
 /**
- * Completa datos obligatorios antes de permitir el acceso ciudadano.
+ * Completa nombre y datos obligatorios antes de permitir el acceso ciudadano.
  *
  * @component
  * @module Auth
@@ -54,13 +59,18 @@ export function CompleteGoogleProfileForm({
   email,
   onCompleted,
   onSignOut,
+  onOpenPrivacy,
+  onOpenUsage,
 }: CompleteGoogleProfileFormProps) {
   const form = useForm<CompleteGoogleProfileValues>({
     resolver: zodResolver(completeGoogleProfileSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
       dpi: "",
       phone: "",
       address: "",
+      acceptedTerms: false,
     },
   })
 
@@ -68,7 +78,7 @@ export function CompleteGoogleProfileForm({
     const loadCurrentValues = async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dpi,phone,address")
+        .select("first_name,last_name,dpi,phone,address")
         .eq("id", userId)
         .maybeSingle()
 
@@ -78,9 +88,12 @@ export function CompleteGoogleProfileForm({
       }
 
       form.reset({
+        firstName: data?.first_name ?? "",
+        lastName: data?.last_name ?? "",
         dpi: data?.dpi ?? "",
         phone: data?.phone ?? "",
         address: data?.address ?? "",
+        acceptedTerms: false,
       })
     }
 
@@ -93,9 +106,13 @@ export function CompleteGoogleProfileForm({
     const { error } = await supabase
       .from("profiles")
       .update({
+        first_name: values.firstName,
+        last_name: values.lastName,
         dpi: values.dpi,
         phone: values.phone,
-        address: values.address || null,
+        address: values.address ?? null,
+        consent_version: CONSENT_VERSION,
+        consent_accepted_at: new Date().toISOString(),
       })
       .eq("id", userId)
 
@@ -123,8 +140,7 @@ export function CompleteGoogleProfileForm({
             Completa tu perfil
           </h1>
           <p className="mb-6 mt-1 text-sm text-gray-600">
-            Estos datos son obligatorios para validar tus reportes. No se
-            publican en el muro comunitario.
+            Nombre, DPI y teléfono son obligatorios para validar tus reportes. No se publican en el muro comunitario.
           </p>
 
           <Form {...form}>
@@ -135,6 +151,44 @@ export function CompleteGoogleProfileForm({
             >
               <FormField
                 control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Nombre *</FormLabel>
+                    <FormControl>
+                      <Input
+                        autoComplete="given-name"
+                        maxLength={FIELD_LIMITS.firstName.max}
+                        className="bg-white text-gray-900 dark:bg-white dark:text-gray-900"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700">Apellido *</FormLabel>
+                    <FormControl>
+                      <Input
+                        autoComplete="family-name"
+                        maxLength={FIELD_LIMITS.lastName.max}
+                        className="bg-white text-gray-900 dark:bg-white dark:text-gray-900"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="dpi"
                 render={({ field }) => (
                   <FormItem>
@@ -143,6 +197,7 @@ export function CompleteGoogleProfileForm({
                       <Input
                         inputMode="numeric"
                         autoComplete="off"
+                        maxLength={13}
                         className="bg-white text-gray-900 dark:bg-white dark:text-gray-900"
                         {...field}
                       />
@@ -162,6 +217,7 @@ export function CompleteGoogleProfileForm({
                       <Input
                         inputMode="numeric"
                         autoComplete="tel"
+                        maxLength={8}
                         className="bg-white text-gray-900 dark:bg-white dark:text-gray-900"
                         {...field}
                       />
@@ -176,16 +232,44 @@ export function CompleteGoogleProfileForm({
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700">
-                      Dirección (opcional)
-                    </FormLabel>
+                    <FormLabel className="text-gray-700">Dirección (opcional)</FormLabel>
                     <FormControl>
                       <Input
                         autoComplete="street-address"
+                        maxLength={FIELD_LIMITS.address.max}
                         className="bg-white text-gray-900 dark:bg-white dark:text-gray-900"
                         {...field}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="acceptedTerms"
+                render={({ field }) => (
+                  <FormItem>
+                    <label className="flex items-start gap-2 text-xs text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(event) => field.onChange(event.target.checked)}
+                        className="mt-0.5 size-4"
+                      />
+                      <span>
+                        Acepto el{" "}
+                        <button type="button" className="text-blue-600 underline" onClick={onOpenPrivacy}>
+                          aviso de privacidad
+                        </button>{" "}
+                        y las{" "}
+                        <button type="button" className="text-blue-600 underline" onClick={onOpenUsage}>
+                          reglas de uso
+                        </button>
+                        .
+                      </span>
+                    </label>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -202,9 +286,7 @@ export function CompleteGoogleProfileForm({
                 className="w-full bg-blue-500 text-white hover:bg-blue-600"
                 disabled={form.formState.isSubmitting}
               >
-                {form.formState.isSubmitting
-                  ? "Guardando..."
-                  : "Completar registro"}
+                {form.formState.isSubmitting ? "Guardando..." : "Completar registro"}
               </Button>
               <Button
                 type="button"

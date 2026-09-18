@@ -60,14 +60,14 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 flex items-center gap-1.5 text-sm text-indigo-300 hover:text-gray-100"
+        className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground dark:text-indigo-300 dark:hover:text-gray-100"
       >
         <ArrowLeft className="size-4" />
         Volver
       </button>
 
       <header className="mb-5">
-        <h1 className="font-display text-xl font-bold text-gray-100">
+        <h1 className="font-display text-xl font-bold text-foreground">
           Muro Comunitario
         </h1>
         <p className="mt-1 text-xs text-indigo-300">

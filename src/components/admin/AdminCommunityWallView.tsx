@@ -58,6 +58,7 @@ export function AdminCommunityWallView() {
         .select("id,title,category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolved_at,published_at")
         .eq("is_public", true)
         .eq("status", "Resuelto")
+        .is("discarded_at", null)
         .gte("published_at", cutoff)
         .order("published_at", { ascending: false })
 

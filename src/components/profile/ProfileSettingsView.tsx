@@ -52,6 +52,7 @@ export function ProfileSettingsView({
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isAnonymizing, setIsAnonymizing] = useState(false)
   const isAdminLayout = layout === "admin"
   const citizenLabelClass = isAdminLayout
     ? undefined
@@ -173,6 +174,43 @@ export function ProfileSettingsView({
     setPasswordMessage("Se envió un enlace de cambio de contraseña al correo registrado.")
   }
 
+  const handleAnonymizeAccount = async () => {
+    const confirmed = window.confirm(
+      "¿Desactivar tu cuenta? Se anonimizarán tus datos personales. Los reportes se conservan sin tu identidad."
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setIsAnonymizing(true)
+    setErrorMessage(null)
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const accessToken = sessionData.session?.access_token
+    if (!accessToken) {
+      setIsAnonymizing(false)
+      setErrorMessage("Inicia sesión de nuevo para continuar.")
+      return
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anonymize-account`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    )
+
+    setIsAnonymizing(false)
+
+    if (!response.ok) {
+      setErrorMessage("No se pudo completar la solicitud. Inténtalo más tarde.")
+      return
+    }
+
+    await supabase.auth.signOut()
+  }
+
   return (
     <section
       className={
@@ -224,9 +262,9 @@ export function ProfileSettingsView({
               </p>
             </div>
             <div>
-              <Label>Rol</Label>
+              <Label>Cuenta</Label>
               <p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
-                {profile?.role ?? "Cargando..."}
+                {isAdminLayout ? "Personal administrativo" : "Ciudadana"}
               </p>
             </div>
             {!isAdminLayout && (
@@ -345,12 +383,16 @@ export function ProfileSettingsView({
                 <h3 className="text-base font-semibold">Eliminación de cuenta</h3>
               </div>
               <p className="mb-3 text-sm text-muted-foreground">
-                Por seguridad, la eliminación real debe realizarse mediante una función
-                administrativa con permisos de servidor.
+                Se anonimizarán tu nombre, DPI, teléfono y dirección. Tus reportes se conservan para la Alcaldía. Esta acción no se puede deshacer.
               </p>
-              <Button type="button" variant="destructive" disabled>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isAnonymizing}
+                onClick={() => void handleAnonymizeAccount()}
+              >
                 <Trash2 className="size-4" />
-                Solicitar eliminación
+                {isAnonymizing ? "Procesando..." : "Desactivar mi cuenta"}
               </Button>
             </div>
           )}

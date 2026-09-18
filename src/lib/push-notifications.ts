@@ -71,6 +71,22 @@ export async function enablePushNotifications() {
   }
 }
 
+export function shouldOfferPushPrompt() {
+  if (typeof Notification === "undefined") {
+    return false
+  }
+
+  if (Notification.permission !== "default") {
+    return false
+  }
+
+  return localStorage.getItem("pwa-alcaldia-push-prompt") !== "dismissed"
+}
+
+export function markPushPromptDismissed() {
+  localStorage.setItem("pwa-alcaldia-push-prompt", "dismissed")
+}
+
 export async function disablePushNotifications() {
   if (!supportsWebPush()) {
     return

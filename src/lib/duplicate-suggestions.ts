@@ -28,7 +28,13 @@ export async function fetchDuplicateSuggestions(
   }
 }
 
-export function getSuggestedPriority(category: string, createdAt?: string) {
+export type SuggestedPriority = "Alta" | "Media"
+export type SuggestedPriorityReason =
+  | "categoria_critica"
+  | "antiguedad"
+  | "estandar"
+
+export function getSuggestedPriorityDetails(category: string, createdAt?: string) {
   const highPriorityCategories = new Set([
     "Agua potable",
     "Drenajes y alcantarillado",
@@ -38,9 +44,31 @@ export function getSuggestedPriority(category: string, createdAt?: string) {
     createdAt !== undefined &&
     Date.now() - new Date(createdAt).getTime() > 3 * 24 * 60 * 60 * 1000
 
-  return highPriorityCategories.has(category) || isOlderThanThreeDays
-    ? "Alta"
-    : "Media"
+  if (highPriorityCategories.has(category)) {
+    return {
+      label: "Alta" as const,
+      reason: "categoria_critica" as const,
+      explanation: "Categoría crítica sugerida por el catálogo municipal.",
+    }
+  }
+
+  if (isOlderThanThreeDays) {
+    return {
+      label: "Alta" as const,
+      reason: "antiguedad" as const,
+      explanation: "El reporte lleva más de 72 horas sin resolución.",
+    }
+  }
+
+  return {
+    label: "Media" as const,
+    reason: "estandar" as const,
+    explanation: "Sugerencia estándar. La prioridad la decide el personal.",
+  }
+}
+
+export function getSuggestedPriority(category: string, createdAt?: string): SuggestedPriority {
+  return getSuggestedPriorityDetails(category, createdAt).label
 }
 
 interface ComparableIncident {

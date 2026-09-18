@@ -2,6 +2,14 @@ import { useEffect, useState } from "react"
 import type { Session, User } from "@supabase/supabase-js"
 
 import { CompleteGoogleProfileForm } from "@/components/auth/CompleteGoogleProfileForm"
+import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm"
+import {
+  LegalDocumentView,
+} from "@/components/auth/LegalDocumentView"
+import {
+  PRIVACY_NOTICE_PARAGRAPHS,
+  USAGE_RULES_PARAGRAPHS,
+} from "@/lib/legal-copy"
 import { LoginForm } from "@/components/auth/LoginForm"
 import { RegisterForm } from "@/components/auth/RegisterForm"
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm"
@@ -48,6 +56,7 @@ function clearCachedRole(userId: string) {
 }
 
 type AuthTab = "login" | "signup"
+type PublicScreen = "auth" | "forgot-password" | "privacy" | "usage"
 
 function getMetadataValue(user: User, key: string) {
   const value = user.user_metadata?.[key]
@@ -91,6 +100,41 @@ async function createCitizenProfileFromGoogleUser(user: User) {
  */
 function AuthPage() {
   const [tab, setTab] = useState<AuthTab>("login")
+  const [screen, setScreen] = useState<PublicScreen>("auth")
+
+  if (screen === "forgot-password") {
+    return (
+      <main className="min-h-screen bg-[#edf3fb] px-4 py-6">
+        <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center">
+          <section className="w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <ForgotPasswordForm onBack={() => setScreen("auth")} />
+          </section>
+        </div>
+      </main>
+    )
+  }
+
+  if (screen === "privacy") {
+    return (
+      <LegalDocumentView
+        title="Aviso de privacidad"
+        version="2026-09-16"
+        body={PRIVACY_NOTICE_PARAGRAPHS}
+        onBack={() => setScreen("auth")}
+      />
+    )
+  }
+
+  if (screen === "usage") {
+    return (
+      <LegalDocumentView
+        title="Reglas de uso"
+        version="2026-09-16"
+        body={USAGE_RULES_PARAGRAPHS}
+        onBack={() => setScreen("auth")}
+      />
+    )
+  }
 
   return (
     <main className="min-h-screen bg-[#edf3fb] px-4 py-6 sm:px-6 lg:px-8">
@@ -134,7 +178,14 @@ function AuthPage() {
             </div>
 
             <div className="flex-1">
-              {tab === "login" ? <LoginForm /> : <RegisterForm />}
+              {tab === "login" ? (
+                <LoginForm onForgotPassword={() => setScreen("forgot-password")} />
+              ) : (
+                <RegisterForm
+                  onOpenPrivacy={() => setScreen("privacy")}
+                  onOpenUsage={() => setScreen("usage")}
+                />
+              )}
             </div>
 
             <p className="mt-5 text-center text-xs text-gray-400">
@@ -205,11 +256,10 @@ function AuthPage() {
                 </svg>
               </div>
               <h2 className="font-display text-lg font-bold text-gray-800">
-                Sistema Seguro
+                Sistema municipal
               </h2>
               <p className="mt-1 max-w-xs text-sm text-gray-500">
-                Tus datos se gestionan mediante Supabase Auth y políticas RLS del
-                proyecto.
+                Tus datos se tratan para gestionar reportes ciudadanos y no se publican en el muro comunitario.
               </p>
             </div>
           </aside>
@@ -226,6 +276,7 @@ function App() {
   const [roleError, setRoleError] = useState<string | null>(null)
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
   const [requiresCompleteProfile, setRequiresCompleteProfile] = useState(false)
+  const [legalOverlay, setLegalOverlay] = useState<"privacy" | "usage" | null>(null)
   const sessionUser = session?.user
 
   useEffect(() => {
@@ -249,7 +300,17 @@ function App() {
       }
     })
 
-    return () => subscription.unsubscribe()
+    const handlePageHide = () => {
+      if (sessionStorage.getItem("pwa-alcaldia-session-only") === "1") {
+        void supabase.auth.signOut()
+      }
+    }
+    window.addEventListener("pagehide", handlePageHide)
+
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener("pagehide", handlePageHide)
+    }
   }, [])
 
   useEffect(() => {
@@ -263,7 +324,7 @@ function App() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("role,dpi,phone")
+        .select("role,dpi,phone,first_name,last_name,anonymized_at")
         .eq("id", sessionUser.id)
         .maybeSingle()
 
@@ -301,8 +362,15 @@ function App() {
           return
         }
 
-        setRoleError("No se encontró un perfil con rol asignado para este usuario.")
+        setRoleError("No se pudo cargar tu perfil. Intenta de nuevo o contacta a la Alcaldía.")
         setRole(null)
+        return
+      }
+
+      if (data?.anonymized_at) {
+        setRoleError("Esta cuenta fue desactivada. Si necesitas ayuda, contacta a la Alcaldía.")
+        setRole(null)
+        await supabase.auth.signOut()
         return
       }
 
@@ -311,7 +379,7 @@ function App() {
       setRoleError(null)
       setRequiresCompleteProfile(
         profileRole === "citizen" &&
-          (!data?.dpi || !data.phone)
+          (!data?.dpi || !data.phone || !data.first_name || !data.last_name)
       )
     }
 
@@ -354,6 +422,8 @@ function App() {
                 email={session.user.email}
                 onCompleted={() => setRequiresCompleteProfile(false)}
                 onSignOut={() => void handleSignOut()}
+                onOpenPrivacy={() => setLegalOverlay("privacy")}
+                onOpenUsage={() => setLegalOverlay("usage")}
               />
             )}
 
@@ -377,6 +447,21 @@ function App() {
                 />
               )}
             </>
+          )}
+
+          {legalOverlay && (
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-background">
+              <LegalDocumentView
+                title={legalOverlay === "privacy" ? "Aviso de privacidad" : "Reglas de uso"}
+                version="2026-09-16"
+                body={
+                  legalOverlay === "privacy"
+                    ? PRIVACY_NOTICE_PARAGRAPHS
+                    : USAGE_RULES_PARAGRAPHS
+                }
+                onBack={() => setLegalOverlay(null)}
+              />
+            </div>
           )}
         </div>
       </TooltipProvider>

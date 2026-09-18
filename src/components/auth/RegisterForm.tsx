@@ -1,9 +1,15 @@
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
-import { Button } from "@/components/ui/button"
+import { PasswordInput } from "@/components/auth/PasswordInput"
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton"
+import {
+  REGISTER_CONSENT_VERSION,
+  registerFormSchema,
+  type RegisterFormValues,
+} from "@/components/auth/register-form.schema"
+import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
@@ -15,23 +21,26 @@ import {
 import { Input } from "@/components/ui/input"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
-import {
-  registerFormSchema,
-  type RegisterFormValues,
-} from "@/components/auth/register-form.schema"
+import { FIELD_LIMITS, getPasswordIssues } from "@/lib/validation"
+
+const AUTH_INPUT_CLASS =
+  "rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+
+interface RegisterFormProps {
+  onOpenPrivacy: () => void
+  onOpenUsage: () => void
+}
 
 /**
  * Registration form for new citizen accounts.
  *
- * Creates a Supabase auth user and writes a matching citizen profile —
- * including DPI, phone, and optional address — so the administrative module
- * can verify a reporting citizen's identity when managing incidents.
+ * Creates the Auth user with metadata. The profile row is created by a
+ * database trigger so the client never upserts as anonymous.
  *
  * @component
  * @module Auth
- * @returns {JSX.Element} Citizen registration form with status feedback.
  */
-export function RegisterForm() {
+export function RegisterForm({ onOpenPrivacy, onOpenUsage }: RegisterFormProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
@@ -47,14 +56,18 @@ export function RegisterForm() {
       dpi: "",
       phone: "",
       address: "",
+      acceptedTerms: false,
     },
   })
+
+  const passwordValue = useWatch({ control: form.control, name: "password" })
+  const passwordHints = passwordValue ? getPasswordIssues(passwordValue) : []
 
   const handleSubmit = async (values: RegisterFormValues) => {
     setErrorMessage(null)
     setSuccessMessage(null)
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {
@@ -62,34 +75,22 @@ export function RegisterForm() {
           first_name: values.firstName,
           last_name: values.lastName,
           full_name: `${values.firstName} ${values.lastName}`,
+          dpi: values.dpi,
+          phone: values.phone,
+          address: values.address || null,
+          consent_version: REGISTER_CONSENT_VERSION,
+          role: "citizen",
         },
       },
     })
 
     if (error) {
-      setErrorMessage(toUserFacingError(error))
+      setErrorMessage(toUserFacingError(error, "No se pudo crear la cuenta."))
       return
     }
 
-    if (data.user) {
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: data.user.id,
-        role: "citizen",
-        first_name: values.firstName,
-        last_name: values.lastName,
-        dpi: values.dpi,
-        phone: values.phone,
-        address: values.address ? values.address : null,
-      })
-
-      if (profileError) {
-        setErrorMessage(profileError.message)
-        return
-      }
-    }
-
     setSuccessMessage(
-      "Cuenta creada. Revisa tu correo para confirmar el acceso si está habilitado en Auth."
+      "Cuenta creada. Revisa tu correo para confirmar el acceso si está habilitado."
     )
     form.reset()
   }
@@ -126,7 +127,8 @@ export function RegisterForm() {
                   <Input
                     placeholder="Juan"
                     autoComplete="given-name"
-                    className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+                    maxLength={FIELD_LIMITS.firstName.max}
+                    className={AUTH_INPUT_CLASS}
                     {...field}
                   />
                 </FormControl>
@@ -134,7 +136,6 @@ export function RegisterForm() {
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="lastName"
@@ -145,7 +146,8 @@ export function RegisterForm() {
                   <Input
                     placeholder="Pérez"
                     autoComplete="family-name"
-                    className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+                    maxLength={FIELD_LIMITS.lastName.max}
+                    className={AUTH_INPUT_CLASS}
                     {...field}
                   />
                 </FormControl>
@@ -166,7 +168,8 @@ export function RegisterForm() {
                   type="email"
                   placeholder="juan@correo.com"
                   autoComplete="email"
-                  className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+                  maxLength={FIELD_LIMITS.email.max}
+                  className={AUTH_INPUT_CLASS}
                   {...field}
                 />
               </FormControl>
@@ -187,7 +190,8 @@ export function RegisterForm() {
                     inputMode="numeric"
                     placeholder="0000000000000"
                     autoComplete="off"
-                    className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+                    maxLength={13}
+                    className={AUTH_INPUT_CLASS}
                     {...field}
                   />
                 </FormControl>
@@ -195,7 +199,6 @@ export function RegisterForm() {
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="phone"
@@ -207,7 +210,8 @@ export function RegisterForm() {
                     inputMode="numeric"
                     placeholder="50000000"
                     autoComplete="tel"
-                    className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+                    maxLength={8}
+                    className={AUTH_INPUT_CLASS}
                     {...field}
                   />
                 </FormControl>
@@ -227,7 +231,8 @@ export function RegisterForm() {
                 <Input
                   placeholder="Zona 18, Ciudad de Guatemala"
                   autoComplete="street-address"
-                  className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+                  maxLength={FIELD_LIMITS.address.max}
+                  className={AUTH_INPUT_CLASS}
                   {...field}
                 />
               </FormControl>
@@ -243,14 +248,21 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel className="text-sm text-gray-600">Contraseña *</FormLabel>
               <FormControl>
-                <Input
-                  type="password"
-                  placeholder="********"
+                <PasswordInput
+                  placeholder="Mínimo 12 caracteres"
                   autoComplete="new-password"
-                  className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+                  maxLength={FIELD_LIMITS.password.maxChars}
+                  className={AUTH_INPUT_CLASS}
                   {...field}
                 />
               </FormControl>
+              {passwordHints.length > 0 && (
+                <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+                  {passwordHints.map((hint) => (
+                    <li key={hint}>{hint}</li>
+                  ))}
+                </ul>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -265,11 +277,11 @@ export function RegisterForm() {
                 Confirmar contraseña *
               </FormLabel>
               <FormControl>
-                <Input
-                  type="password"
-                  placeholder="********"
+                <PasswordInput
+                  placeholder="Repite la contraseña"
                   autoComplete="new-password"
-                  className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+                  maxLength={FIELD_LIMITS.password.maxChars}
+                  className={AUTH_INPUT_CLASS}
                   {...field}
                 />
               </FormControl>
@@ -278,19 +290,46 @@ export function RegisterForm() {
           )}
         />
 
-        <label className="flex cursor-pointer items-start gap-2 pt-1 text-xs text-gray-500">
-          <input required type="checkbox" className="mt-0.5 size-4 shrink-0 rounded accent-blue-500" />
-          <span>
-            Acepto los términos y condiciones y la política de privacidad del
-            sistema municipal.
-          </span>
-        </label>
+        <FormField
+          control={form.control}
+          name="acceptedTerms"
+          render={({ field }) => (
+            <FormItem>
+              <label className="flex cursor-pointer items-start gap-2 pt-1 text-xs text-gray-500">
+                <input
+                  type="checkbox"
+                  checked={field.value}
+                  onChange={(event) => field.onChange(event.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 rounded accent-blue-500"
+                />
+                <span>
+                  Acepto el{" "}
+                  <button
+                    type="button"
+                    className="font-medium text-blue-600 underline-offset-2 hover:underline"
+                    onClick={onOpenPrivacy}
+                  >
+                    aviso de privacidad
+                  </button>{" "}
+                  y las{" "}
+                  <button
+                    type="button"
+                    className="font-medium text-blue-600 underline-offset-2 hover:underline"
+                    onClick={onOpenUsage}
+                  >
+                    reglas de uso
+                  </button>
+                  .
+                </span>
+              </label>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
         {successMessage && (
-          <p className="text-sm text-emerald-700 dark:text-emerald-300">
-            {successMessage}
-          </p>
+          <p className="text-sm text-emerald-700 dark:text-emerald-300">{successMessage}</p>
         )}
 
         <Button

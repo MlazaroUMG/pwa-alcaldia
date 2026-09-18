@@ -22,7 +22,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { DiscardIncidentDialog } from "@/components/admin/DiscardIncidentDialog"
 import { downloadIncidentImage } from "@/lib/download-incident-image"
+import { getSignedIncidentPhotoUrl } from "@/lib/incident-photos"
+import { formatTicketNumber } from "@/lib/ticket-number"
 import {
   findPossibleDuplicateIds,
   getSuggestedPriority,
@@ -34,9 +37,9 @@ import type { IncidentStatus } from "@/lib/supabase.types"
 
 type AdminIncident = IncidentDetail
 
-type FilterTab = "Todos" | IncidentStatus
+type FilterTab = "Todos" | IncidentStatus | "Descartados"
 
-const FILTER_TABS: FilterTab[] = ["Todos", "Pendiente", "En Progreso", "Resuelto"]
+const FILTER_TABS: FilterTab[] = ["Todos", "Pendiente", "En Progreso", "Resuelto", "Descartados"]
 
 const STATUS_LABELS: Record<IncidentStatus, string> = {
   Pendiente: "Recibido",
@@ -103,6 +106,8 @@ export function AdminTicketTable() {
   const childDialogParentRef = useRef<AdminIncident | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<IncidentPageSize>(10)
+  const [discardOpen, setDiscardOpen] = useState(false)
+  const [isDiscarding, setIsDiscarding] = useState(false)
 
   useEffect(() => {
     const bootstrapTimer = window.setTimeout(() => {
@@ -110,7 +115,7 @@ export function AdminTicketTable() {
         const { data, error } = await supabase
           .from("incidents")
           .select(
-            "id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,user_id,latitude,longitude"
+            "id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,image_path,ticket_number,discarded_at,user_id,latitude,longitude"
           )
           .order("created_at", { ascending: false })
 
@@ -136,15 +141,19 @@ export function AdminTicketTable() {
       (accumulator, tab) => {
         accumulator[tab] =
           tab === "Todos"
-            ? incidents.length
-            : incidents.filter((incident) => incident.status === tab).length
+            ? incidents.filter((incident) => !incident.discarded_at).length
+            : tab === "Descartados"
+              ? incidents.filter((incident) => Boolean(incident.discarded_at)).length
+              : incidents.filter(
+                  (incident) => !incident.discarded_at && incident.status === tab
+                ).length
         return accumulator
       },
-      { Todos: 0, Pendiente: 0, "En Progreso": 0, Resuelto: 0 }
+      { Todos: 0, Pendiente: 0, "En Progreso": 0, Resuelto: 0, Descartados: 0 }
     )
   }, [incidents])
   const possibleDuplicateIds = useMemo(
-    () => findPossibleDuplicateIds(incidents),
+    () => findPossibleDuplicateIds(incidents.filter((incident) => !incident.discarded_at)),
     [incidents]
   )
 
@@ -152,7 +161,11 @@ export function AdminTicketTable() {
     const normalizedSearch = search.trim().toLowerCase()
 
     return incidents.filter((incident) => {
-      const matchesTab = activeTab === "Todos" || incident.status === activeTab
+      const matchesTab =
+        activeTab === "Descartados"
+          ? Boolean(incident.discarded_at)
+          : !incident.discarded_at &&
+            (activeTab === "Todos" || incident.status === activeTab)
       const matchesDependency =
         dependencyFilter === "all" || incident.dependency === dependencyFilter
       const matchesCallType =
@@ -162,6 +175,7 @@ export function AdminTicketTable() {
         incident.id.toLowerCase().includes(normalizedSearch) ||
         incident.title.toLowerCase().includes(normalizedSearch) ||
         incident.category.toLowerCase().includes(normalizedSearch) ||
+        incident.ticket_number?.toLowerCase().includes(normalizedSearch) ||
         incident.dependency?.toLowerCase().includes(normalizedSearch) ||
         incident.call_type_label?.toLowerCase().includes(normalizedSearch)
 
@@ -198,6 +212,65 @@ export function AdminTicketTable() {
     )
   }
 
+  const handleDiscard = async (reason: string, note: string) => {
+    const ids =
+      selectedIds.size > 0
+        ? [...selectedIds]
+        : detailIncident
+          ? [detailIncident.id]
+          : []
+    if (ids.length === 0) {
+      return
+    }
+
+    setIsDiscarding(true)
+    const { error } = await supabase.rpc("discard_incidents", {
+      incident_ids: ids,
+      reason,
+      note: note || null,
+    })
+    setIsDiscarding(false)
+
+    if (error) {
+      setErrorMessage(toUserFacingError(error))
+      return
+    }
+
+    setIncidents((previous) =>
+      previous.map((incident) =>
+        ids.includes(incident.id)
+          ? { ...incident, discarded_at: new Date().toISOString() }
+          : incident
+      )
+    )
+    setSelectedIds(new Set())
+    setDetailIncident(null)
+    setDiscardOpen(false)
+  }
+
+  const handleRestore = async () => {
+    const ids = [...selectedIds]
+    if (ids.length === 0) {
+      return
+    }
+
+    const { error } = await supabase.rpc("restore_incidents", {
+      incident_ids: ids,
+    })
+
+    if (error) {
+      setErrorMessage(toUserFacingError(error))
+      return
+    }
+
+    setIncidents((previous) =>
+      previous.map((incident) =>
+        ids.includes(incident.id) ? { ...incident, discarded_at: null } : incident
+      )
+    )
+    setSelectedIds(new Set())
+  }
+
   const closeChildDialog = (
     closeChild: () => void
   ) => {
@@ -226,6 +299,24 @@ export function AdminTicketTable() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && activeTab === "Descartados" && (
+            <button
+              type="button"
+              onClick={() => void handleRestore()}
+              className="rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700"
+            >
+              Restaurar ({selectedIds.size})
+            </button>
+          )}
+          {selectedIds.size > 0 && activeTab !== "Descartados" && (
+            <button
+              type="button"
+              onClick={() => setDiscardOpen(true)}
+              className="rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700"
+            >
+              Descartar ({selectedIds.size})
+            </button>
+          )}
           <HelpCircle className="size-5 text-gray-300" />
         </div>
       </div>
@@ -276,7 +367,7 @@ export function AdminTicketTable() {
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
-            {tab === "Todos" ? "Todos" : STATUS_LABELS[tab]}
+            {tab === "Todos" ? "Todos" : tab === "Descartados" ? "Descartados" : STATUS_LABELS[tab]}
             <span
               className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${
                 activeTab === tab ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"
@@ -376,7 +467,7 @@ export function AdminTicketTable() {
                         </span>
                       )}
                       <div className="mt-0.5 break-all text-xs text-gray-400">
-                        {incident.id}
+                        {formatTicketNumber(incident.ticket_number)}
                       </div>
                     </td>
                     <td className="px-2 py-3 sm:px-3">
@@ -486,12 +577,15 @@ export function AdminTicketTable() {
           setViewingLocation(incident)
         }}
         onDownloadImage={(incident) => {
-          if (!incident.image_url) {
-            return
-          }
-
-          void downloadIncidentImage(incident.image_url, incident.title)
+          void getSignedIncidentPhotoUrl(incident.image_path || incident.image_url).then(
+            (url) => {
+              if (url) {
+                void downloadIncidentImage(url, incident.title)
+              }
+            }
+          )
         }}
+        onDiscard={() => setDiscardOpen(true)}
       />
 
       <Dialog
@@ -517,6 +611,14 @@ export function AdminTicketTable() {
             )}
         </DialogContent>
       </Dialog>
+
+      <DiscardIncidentDialog
+        open={discardOpen}
+        count={selectedIds.size || (detailIncident ? 1 : 0)}
+        isSubmitting={isDiscarding}
+        onOpenChange={setDiscardOpen}
+        onConfirm={handleDiscard}
+      />
     </section>
   )
 }

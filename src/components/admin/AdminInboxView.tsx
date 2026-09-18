@@ -28,6 +28,7 @@ interface InboxIncident {
   status: IncidentStatus
   created_at: string
   user_id: string | null
+  ticket_number?: string | null
   latitude: number | null
   longitude: number | null
 }
@@ -58,8 +59,9 @@ export function AdminInboxView({
     const loadInbox = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,user_id,latitude,longitude")
+        .select("id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,user_id,latitude,longitude,ticket_number")
         .in("status", ["Pendiente", "En Progreso"])
+        .is("discarded_at", null)
         .order("created_at", { ascending: false })
 
       const nextItems = (data ?? []) as InboxIncident[]
@@ -115,7 +117,8 @@ export function AdminInboxView({
         incident.category.toLowerCase().includes(normalizedQuery) ||
         incident.dependency?.toLowerCase().includes(normalizedQuery) ||
         incident.call_type_label?.toLowerCase().includes(normalizedQuery) ||
-        incident.title.toLowerCase().includes(normalizedQuery)
+        incident.title.toLowerCase().includes(normalizedQuery) ||
+        incident.ticket_number?.toLowerCase().includes(normalizedQuery)
 
       return matchesSearch
     })

@@ -11,9 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { CharacterCount } from "@/components/ui/character-count"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { FIELD_LIMITS, resolutionSummarySchema } from "@/lib/validation"
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024
@@ -95,22 +97,25 @@ export function ResolveIncidentDialog({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const trimmedSummary = resolutionSummary.trim()
 
     if (!photo) {
       setFormError("Adjunta la fotografía de la resolución.")
       return
     }
 
-    if (trimmedSummary.length < 10) {
-      setFormError("La descripción de la resolución debe tener al menos 10 caracteres.")
+    const parsedSummary = resolutionSummarySchema.safeParse(resolutionSummary)
+    if (!parsedSummary.success) {
+      setFormError(
+        parsedSummary.error.issues[0]?.message ??
+          "La descripción de la resolución no es válida."
+      )
       return
     }
 
     setFormError(null)
     await onSubmit({
       isPublic,
-      resolutionSummary: trimmedSummary,
+      resolutionSummary: parsedSummary.data,
       photo,
     })
   }
@@ -124,7 +129,7 @@ export function ResolveIncidentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="overflow-hidden">
         <DialogHeader>
           <DialogTitle>Cerrar incidencia</DialogTitle>
           <DialogDescription>
@@ -180,7 +185,7 @@ export function ResolveIncidentDialog({
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Label htmlFor="resolution-summary">Descripción de la resolución</Label>
             <Textarea
               id="resolution-summary"
@@ -188,6 +193,12 @@ export function ResolveIncidentDialog({
               value={resolutionSummary}
               onChange={(event) => setResolutionSummary(event.target.value)}
               rows={4}
+              maxLength={FIELD_LIMITS.resolutionSummary.max}
+              className="max-h-32 min-h-24"
+            />
+            <CharacterCount
+              value={resolutionSummary}
+              max={FIELD_LIMITS.resolutionSummary.max}
             />
           </div>
 

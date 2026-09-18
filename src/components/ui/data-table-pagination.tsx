@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 30]
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50]
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>
@@ -40,8 +40,8 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => table.setPageSize(Number(value))}
           >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
+            <SelectTrigger className="h-9 w-[5.25rem] min-w-[5.25rem] overflow-visible *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:overflow-visible">
+              <SelectValue>{table.getState().pagination.pageSize}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {PAGE_SIZE_OPTIONS.map((pageSize) => (
