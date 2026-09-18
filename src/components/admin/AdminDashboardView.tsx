@@ -28,6 +28,7 @@ interface DashboardIncident {
   status: IncidentStatus
   created_at: string
   is_public: boolean
+  ticket_number?: string | null
 }
 
 const STATUS_LABELS: Record<IncidentStatus, string> = {
@@ -62,7 +63,8 @@ export function AdminDashboardView({ onNavigate }: AdminDashboardViewProps) {
       const loadDashboard = async () => {
         const { data, error } = await supabase
           .from("incidents")
-          .select("id,title,category,dependency,call_type_code,call_type_label,status,created_at,is_public")
+          .select("id,title,category,dependency,call_type_code,call_type_label,status,created_at,is_public,ticket_number")
+          .is("discarded_at", null)
           .order("created_at", { ascending: false })
 
         if (error) {

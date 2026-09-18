@@ -23,6 +23,7 @@ import {
   findPossibleDuplicateIds,
   getSuggestedPriority,
 } from "@/lib/duplicate-suggestions"
+import { uploadIncidentPhoto } from "@/lib/incident-photos"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 import type { IncidentStatus } from "@/lib/supabase.types"
@@ -184,8 +185,9 @@ export function AdminTicketsBoardView() {
         const { data, error } = await supabase
           .from("incidents")
           .select(
-            "id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,user_id,latitude,longitude"
+            "id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,image_path,ticket_number,discarded_at,user_id,latitude,longitude"
           )
+          .is("discarded_at", null)
           .order("created_at", { ascending: false })
 
         if (error) {
@@ -212,6 +214,7 @@ export function AdminTicketsBoardView() {
         incident.category.toLowerCase().includes(normalizedSearch) ||
         incident.dependency?.toLowerCase().includes(normalizedSearch) ||
         incident.call_type_label?.toLowerCase().includes(normalizedSearch) ||
+        incident.ticket_number?.toLowerCase().includes(normalizedSearch) ||
         incident.id.toLowerCase().includes(normalizedSearch)
     )
   }, [incidents, search])
@@ -289,54 +292,36 @@ export function AdminTicketsBoardView() {
 
     setIsResolving(true)
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      setIsResolving(false)
-      setErrorMessage("No se pudo verificar la sesión administrativa.")
-      return
-    }
-
-    const fileExtension = payload.photo.name.split(".").pop() ?? "jpg"
-    const filePath = `resolutions/${user.id}/${resolvingIncident.id}-${Date.now()}.${fileExtension}`
-
-    const { error: uploadError } = await supabase.storage
-      .from("incident-photos")
-      .upload(filePath, payload.photo, {
-        upsert: false,
+    try {
+      const uploaded = await uploadIncidentPhoto({
+        incidentId: resolvingIncident.id,
+        file: payload.photo,
+        kind: "resolution",
       })
 
-    if (uploadError) {
+      const { error } = await supabase
+        .from("incidents")
+        .update({
+          status: "Resuelto",
+          resolved_at: new Date().toISOString(),
+          is_public: payload.isPublic,
+          resolution_summary: payload.resolutionSummary,
+          resolution_image_path: uploaded.path,
+        })
+        .eq("id", resolvingIncident.id)
+
+      if (error) {
+        setErrorMessage(toUserFacingError(error))
+        setIsResolving(false)
+        return
+      }
+    } catch (error) {
       setIsResolving(false)
-      setErrorMessage(
-        toUserFacingError(uploadError, "No se pudo subir la fotografía de resolución.")
-      )
+      setErrorMessage(toUserFacingError(error, "No se pudo subir la fotografía de resolución."))
       return
     }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("incident-photos")
-      .getPublicUrl(filePath)
-
-    const { error } = await supabase
-      .from("incidents")
-      .update({
-        status: "Resuelto",
-        resolved_at: new Date().toISOString(),
-        is_public: payload.isPublic,
-        resolution_summary: payload.resolutionSummary,
-        resolution_image_url: publicUrlData.publicUrl,
-      })
-      .eq("id", resolvingIncident.id)
 
     setIsResolving(false)
-
-    if (error) {
-      setErrorMessage(toUserFacingError(error))
-      return
-    }
 
     const resolvedIncident = { ...resolvingIncident, status: "Resuelto" as const }
     setIncidents((previous) =>

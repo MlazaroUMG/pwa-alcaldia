@@ -1,4 +1,7 @@
-import { Download, MapPin, UserRound } from "lucide-react"
+import { Download, MapPin, Trash2, UserRound } from "lucide-react"
+
+import { SignedPhoto } from "@/components/media/SignedPhoto"
+import { formatTicketNumber } from "@/lib/ticket-number"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,6 +25,9 @@ export interface IncidentDetail {
   status: IncidentStatus
   created_at: string
   image_url: string | null
+  image_path?: string | null
+  ticket_number?: string | null
+  discarded_at?: string | null
   user_id: string | null
   latitude: number | null
   longitude: number | null
@@ -50,6 +56,7 @@ interface IncidentDetailDialogProps {
   isAdvancing?: boolean
   isPossibleDuplicate?: boolean
   suggestedPriority?: "Alta" | "Media"
+  onDiscard?: (incident: IncidentDetail) => void
 }
 
 /**
@@ -72,6 +79,7 @@ export function IncidentDetailDialog({
   isAdvancing = false,
   isPossibleDuplicate = false,
   suggestedPriority,
+  onDiscard,
 }: IncidentDetailDialogProps) {
   const nextActionLabel =
     incident?.status === "Pendiente"
@@ -92,7 +100,7 @@ export function IncidentDetailDialog({
         <DialogHeader>
           <DialogTitle>{incident?.title}</DialogTitle>
           <DialogDescription>
-            Detalle administrativo de la incidencia seleccionada.
+            Folio {formatTicketNumber(incident?.ticket_number)}. Detalle administrativo de la incidencia.
           </DialogDescription>
         </DialogHeader>
         {incident && (
@@ -109,9 +117,9 @@ export function IncidentDetailDialog({
                 </Badge>
               )}
             </div>
-            {incident.image_url && (
-              <img
-                src={incident.image_url}
+            {(incident.image_path || incident.image_url) && (
+              <SignedPhoto
+                path={incident.image_path || incident.image_url}
                 alt={`Evidencia de ${incident.title}`}
                 className="h-56 w-full rounded-xl object-cover"
               />
@@ -147,7 +155,9 @@ export function IncidentDetailDialog({
                 <p className="text-xs font-semibold uppercase text-gray-400">
                   Descripción
                 </p>
-                <p className="text-sm text-gray-700">{incident.description}</p>
+                <p className="max-h-40 overflow-y-auto break-words text-sm text-gray-700">
+                  {incident.description}
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -173,7 +183,7 @@ export function IncidentDetailDialog({
                     Ver ubicación
                   </Button>
                 )}
-              {onDownloadImage && incident.image_url && (
+              {onDownloadImage && (incident.image_path || incident.image_url) && (
                 <Button
                   type="button"
                   variant="outline"
@@ -191,6 +201,16 @@ export function IncidentDetailDialog({
                   onClick={() => onMoveBackward(incident)}
                 >
                   {isAdvancing ? "Actualizando..." : previousActionLabel}
+                </Button>
+              )}
+              {onDiscard && !incident.discarded_at && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => onDiscard(incident)}
+                >
+                  <Trash2 className="size-4" />
+                  Descartar
                 </Button>
               )}
               {onMoveForward && nextActionLabel && (

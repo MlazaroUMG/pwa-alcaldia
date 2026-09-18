@@ -1,12 +1,13 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 
+import { PasswordInput } from "@/components/auth/PasswordInput"
 import { BrandLogo } from "@/components/layout/BrandLogo"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
+import { FIELD_LIMITS, getPasswordIssues } from "@/lib/validation"
 
 interface ResetPasswordFormProps {
   onCompleted: () => void
@@ -18,9 +19,6 @@ const AUTH_INPUT_CLASS =
 /**
  * Formulario de nueva contraseña tras el evento PASSWORD_RECOVERY de Auth.
  *
- * No introduce rutas: App muestra esta vista cuando el enlace de correo
- * restablece la sesión de recuperación.
- *
  * @component
  * @module Auth
  */
@@ -29,13 +27,15 @@ export function ResetPasswordForm({ onCompleted }: ResetPasswordFormProps) {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const passwordHints = password ? getPasswordIssues(password) : []
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setErrorMessage(null)
 
-    if (password.length < 8) {
-      setErrorMessage("La contraseña debe tener al menos 8 caracteres.")
+    const issues = getPasswordIssues(password)
+    if (issues.length > 0) {
+      setErrorMessage(issues[0])
       return
     }
 
@@ -76,7 +76,7 @@ export function ResetPasswordForm({ onCompleted }: ResetPasswordFormProps) {
             Nueva contraseña
           </h1>
           <p className="mb-6 text-sm text-gray-500">
-            Define una contraseña nueva para continuar con tu sesión.
+            Define una contraseña de 12 a 64 caracteres con mayúscula, minúscula, número y símbolo.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -84,25 +84,32 @@ export function ResetPasswordForm({ onCompleted }: ResetPasswordFormProps) {
               <Label htmlFor="reset-password" className="text-sm text-gray-600">
                 Contraseña nueva
               </Label>
-              <Input
+              <PasswordInput
                 id="reset-password"
-                type="password"
                 autoComplete="new-password"
+                maxLength={FIELD_LIMITS.password.maxChars}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className={AUTH_INPUT_CLASS}
                 required
               />
+              {passwordHints.length > 0 && (
+                <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+                  {passwordHints.map((hint) => (
+                    <li key={hint}>{hint}</li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="reset-confirm" className="text-sm text-gray-600">
                 Confirmar contraseña
               </Label>
-              <Input
+              <PasswordInput
                 id="reset-confirm"
-                type="password"
                 autoComplete="new-password"
+                maxLength={FIELD_LIMITS.password.maxChars}
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 className={AUTH_INPUT_CLASS}

@@ -1,2 +1,8 @@
 [functions.send-push]
 verify_jwt = false
+
+[functions.upload-incident-photo]
+verify_jwt = true
+
+[functions.anonymize-account]
+verify_jwt = true

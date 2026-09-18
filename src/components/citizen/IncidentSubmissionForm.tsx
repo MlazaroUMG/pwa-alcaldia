@@ -30,6 +30,18 @@ import {
 } from "@/lib/duplicate-suggestions"
 import { LocationPicker } from "@/components/citizen/LocationPicker"
 import {
+  PushPromptBanner,
+} from "@/components/citizen/PushPromptBanner"
+import { CharacterCount } from "@/components/ui/character-count"
+import { toUserFacingError } from "@/lib/network-errors"
+import { uploadIncidentPhoto } from "@/lib/incident-photos"
+import {
+  enablePushNotifications,
+  markPushPromptDismissed,
+  shouldOfferPushPrompt,
+} from "@/lib/push-notifications"
+import { FIELD_LIMITS } from "@/lib/validation"
+import {
   INCIDENT_CALL_TYPES_BY_DEPENDENCY,
   getCallTypeByCode,
   getCallTypeLabel,
@@ -62,9 +74,13 @@ interface IncidentSubmissionFormProps {
  */
 export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFormProps) {
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const [photoInputKey, setPhotoInputKey] = useState(0)
   const [submitFeedback, setSubmitFeedback] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [showPushPrompt, setShowPushPrompt] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushMessage, setPushMessage] = useState<string | null>(null)
   const [duplicateSuggestions, setDuplicateSuggestions] = useState<
     DuplicateSuggestion[]
   >([])
@@ -109,55 +125,49 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
   }, [photoPreviewUrl])
 
   const persistIncident = async (payload: IncidentSubmissionPayload) => {
-    let imageUrl: string | null = null
+    const { data, error: insertError } = await supabase
+      .from("incidents")
+      .insert({
+        user_id: userId,
+        title: payload.title,
+        description: payload.description,
+        category: payload.category,
+        dependency: payload.dependency,
+        call_type_code: payload.callTypeCode,
+        call_type_label: payload.callTypeLabel,
+        status: "Pendiente",
+        is_public: false,
+        resolution_summary: null,
+        resolved_at: null,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+      })
+      .select("id,ticket_number")
+      .single()
 
-    if (payload.photo) {
-      const fileExtension = payload.photo.name.split(".").pop() ?? "jpg"
-      const baseName = payload.photo.name.replace(/\.[^/.]+$/, "")
-      const normalizedFileName = baseName
-        .trim()
-        .replace(/\s+/g, "-")
-        .toLowerCase()
-      const filePath = `${userId}/${payload.photo.lastModified}-${normalizedFileName}.${fileExtension}`
-
-      const { error: uploadError } = await supabase.storage
-        .from("incident-photos")
-        .upload(filePath, payload.photo, {
-          upsert: false,
-        })
-
-      if (uploadError) {
-        setSubmitError("No se pudo subir la fotografía. Intenta nuevamente.")
-        return false
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("incident-photos")
-        .getPublicUrl(filePath)
-
-      imageUrl = publicUrlData.publicUrl
+    if (insertError || !data) {
+      setSubmitError(
+        toUserFacingError(insertError, "No se pudo registrar la incidencia. Verifica los datos e intenta nuevamente.")
+      )
+      return false
     }
 
-    const { error: insertError } = await supabase.from("incidents").insert({
-      user_id: userId,
-      title: payload.title,
-      description: payload.description,
-      category: payload.category,
-      dependency: payload.dependency,
-      call_type_code: payload.callTypeCode,
-      call_type_label: payload.callTypeLabel,
-      status: "Pendiente",
-      image_url: imageUrl,
-      is_public: false,
-      resolution_summary: null,
-      resolved_at: null,
-      latitude: payload.latitude,
-      longitude: payload.longitude,
-    })
-
-    if (insertError) {
-      setSubmitError("No se pudo registrar la incidencia. Verifica los datos e intenta nuevamente.")
-      return false
+    if (payload.photo) {
+      try {
+        await uploadIncidentPhoto({
+          incidentId: data.id,
+          file: payload.photo,
+          kind: "evidence",
+        })
+      } catch (error) {
+        setSubmitError(
+          toUserFacingError(
+            error,
+            "El reporte se creó, pero no se pudo guardar la fotografía."
+          )
+        )
+        return false
+      }
     }
 
     form.reset({
@@ -172,7 +182,12 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
       longitude: undefined,
     })
     setPhotoInputKey((previous) => previous + 1)
-    setSubmitFeedback("Incidencia registrada correctamente.")
+    setSubmitFeedback(
+      `Incidencia registrada correctamente. Folio ${data.ticket_number ?? "asignado"}.`
+    )
+    if (shouldOfferPushPrompt()) {
+      setShowPushPrompt(true)
+    }
     return true
   }
 
@@ -241,12 +256,12 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center gap-1.5 text-sm text-indigo-300 transition-colors hover:text-gray-100"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground dark:text-indigo-300 dark:hover:text-gray-100"
           >
             <ArrowLeft className="size-4" />
             Volver
           </button>
-          <h1 className="font-display text-xl font-bold text-gray-100">
+          <h1 className="font-display text-xl font-bold text-foreground">
             Reportar Incidencia
           </h1>
         </header>
@@ -290,17 +305,19 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-indigo-300">
                 Título *
               </FormLabel>
               <FormControl>
                 <Input
                   placeholder="Describe brevemente el problema"
                   autoComplete="off"
-                  className="h-14 rounded-xl border-indigo-200 bg-transparent px-4 text-base text-gray-100 placeholder:text-indigo-300/40 focus-visible:ring-indigo-300"
+                  maxLength={FIELD_LIMITS.title.max}
+                  className="h-14 rounded-xl border-indigo-200 bg-transparent px-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-indigo-300 dark:text-gray-100 dark:placeholder:text-indigo-300/40"
                   {...field}
                 />
               </FormControl>
+              <CharacterCount value={field.value} max={FIELD_LIMITS.title.max} />
               <FormMessage />
             </FormItem>
           )}
@@ -311,17 +328,19 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-indigo-300">
                 Descripción
               </FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="Proporciona más detalles sobre la incidencia..."
                   rows={5}
-                  className="min-h-32 resize-none rounded-xl border-indigo-200 bg-transparent px-4 py-3 text-base text-gray-100 placeholder:text-indigo-300/40 focus-visible:ring-indigo-300"
+                  maxLength={FIELD_LIMITS.description.max}
+                  className="min-h-32 resize-none rounded-xl border-indigo-200 bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-indigo-300 dark:text-gray-100 dark:placeholder:text-indigo-300/40"
                   {...field}
                 />
               </FormControl>
+              <CharacterCount value={field.value} max={FIELD_LIMITS.description.max} />
               <FormMessage />
             </FormItem>
           )}
@@ -428,14 +447,14 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
               <FormControl>
                 <div className="space-y-3">
                   <input
-                    key={photoInputKey}
+                    key={`${photoInputKey}-camera`}
                     {...field}
                     ref={(element) => {
                       ref(element)
                       photoInputRef.current = element
                     }}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     capture="environment"
                     className="sr-only"
                     onChange={(event) => {
@@ -443,25 +462,35 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
                       onChange(file)
                     }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => photoInputRef.current?.click()}
-                    className={cn(
-                      "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-7 text-center transition-all",
-                      "border-gray-200 bg-gray-100 text-gray-400 hover:border-gray-300 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:outline-none"
-                    )}
-                  >
-                    {value instanceof File ? (
-                      <ImagePlus className="size-7 text-indigo-500" aria-hidden="true" />
-                    ) : (
-                      <Camera className="size-7 text-gray-400" aria-hidden="true" />
-                    )}
-                    <span className="text-sm">
-                      {value instanceof File
-                        ? "Foto adjuntada"
-                        : "Tomar foto o seleccionar galería"}
-                    </span>
-                  </button>
+                  <input
+                    key={`${photoInputKey}-gallery`}
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      onChange(file)
+                    }}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      className="rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground hover:border-indigo-300"
+                    >
+                      <Camera className="mx-auto mb-1 size-5" />
+                      Cámara
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground hover:border-indigo-300"
+                    >
+                      <ImagePlus className="mx-auto mb-1 size-5" />
+                      Galería
+                    </button>
+                  </div>
                   {value instanceof File && (
                     <div className="space-y-2">
                       {photoPreviewUrl && (
@@ -538,6 +567,28 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
           <p className="text-sm text-emerald-700 dark:text-emerald-300">
             {submitFeedback}
           </p>
+        )}
+        {showPushPrompt && (
+          <PushPromptBanner
+            isBusy={pushBusy}
+            message={pushMessage}
+            onDismiss={() => {
+              markPushPromptDismissed()
+              setShowPushPrompt(false)
+            }}
+            onEnable={() => {
+              setPushBusy(true)
+              void enablePushNotifications()
+                .then(() => {
+                  markPushPromptDismissed()
+                  setShowPushPrompt(false)
+                })
+                .catch((error) => {
+                  setPushMessage(toUserFacingError(error))
+                })
+                .finally(() => setPushBusy(false))
+            }}
+          />
         )}
         </form>
       </Form>

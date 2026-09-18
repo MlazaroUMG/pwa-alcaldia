@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { ArrowLeft } from "lucide-react"
 
+import { formatTicketNumber } from "@/lib/ticket-number"
+import { SignedPhoto } from "@/components/media/SignedPhoto"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabaseClient"
 import type { IncidentStatus } from "@/lib/supabase.types"
@@ -13,6 +15,7 @@ interface MyCasesViewProps {
 
 interface MyIncident {
   id: string
+  ticket_number: string | null
   title: string
   description: string
   category: string
@@ -22,7 +25,9 @@ interface MyIncident {
   status: IncidentStatus
   created_at: string
   image_url: string | null
+  image_path: string | null
   resolution_image_url: string | null
+  resolution_image_path: string | null
   resolution_summary: string | null
   resolved_at: string | null
 }
@@ -110,8 +115,9 @@ export function MyCasesView({
     const loadCases = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,resolution_image_url,resolution_summary,resolved_at")
+        .select("id,ticket_number,title,description,category,dependency,call_type_code,call_type_label,status,created_at,image_url,image_path,resolution_image_url,resolution_image_path,resolution_summary,resolved_at")
         .eq("user_id", userId)
+        .is("discarded_at", null)
         .order("created_at", { ascending: false })
 
       const nextCases = (data ?? []) as MyIncident[]
@@ -136,24 +142,24 @@ export function MyCasesView({
         <button
           type="button"
           onClick={() => setSelectedCase(null)}
-          className="mb-4 flex items-center gap-1.5 text-sm text-indigo-300 hover:text-gray-100"
+            className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground dark:text-indigo-300 dark:hover:text-gray-100"
         >
           <ArrowLeft className="size-4" />
           Mis tickets
         </button>
 
         <article className="mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white">
-          {selectedCase.image_url && (
-            <img
-              src={selectedCase.image_url}
+          {selectedCase.image_path || selectedCase.image_url ? (
+            <SignedPhoto
+              path={selectedCase.image_path || selectedCase.image_url}
               alt={`Evidencia de ${selectedCase.title}`}
               className="h-44 w-full object-cover"
             />
-          )}
+          ) : null}
           <div className="p-4">
             <div className="mb-2 flex items-center gap-2">
               <span className="font-mono text-xs text-gray-400">
-                {selectedCase.id.slice(0, 8)}
+                {formatTicketNumber(selectedCase.ticket_number)}
               </span>
               <Badge className={STATUS_STYLES[selectedCase.status]}>
                 {STATUS_LABELS[selectedCase.status]}
@@ -181,13 +187,13 @@ export function MyCasesView({
         {selectedCase.status === "Resuelto" && (
           <article className="rounded-2xl border border-green-100 bg-green-50 p-4">
             <h3 className="mb-2 text-sm font-semibold text-green-800">Resolución</h3>
-            {selectedCase.resolution_image_url && (
-              <img
-                src={selectedCase.resolution_image_url}
+            {selectedCase.resolution_image_path || selectedCase.resolution_image_url ? (
+              <SignedPhoto
+                path={selectedCase.resolution_image_path || selectedCase.resolution_image_url}
                 alt={`Resolución de ${selectedCase.title}`}
                 className="mb-3 h-36 w-full rounded-xl object-cover"
               />
-            )}
+            ) : null}
             <p className="text-sm text-green-700">
               {selectedCase.resolution_summary ??
                 "Incidencia resuelta por las autoridades correspondientes."}
@@ -209,7 +215,7 @@ export function MyCasesView({
         Volver
       </button>
 
-      <h1 className="font-display mb-5 text-xl font-bold text-gray-100">Mis Tickets</h1>
+      <h1 className="font-display mb-5 text-xl font-bold text-foreground">Mis Tickets</h1>
 
       {isLoading && <p className="text-sm text-muted-foreground">Cargando casos...</p>}
       {!isLoading && cases.length === 0 && (
@@ -229,7 +235,7 @@ export function MyCasesView({
             <div className="mb-2 flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="mb-0.5 font-mono text-xs text-gray-400">
-                  {incident.id.slice(0, 8)}
+                  {formatTicketNumber(incident.ticket_number)}
                 </div>
                 <div className="text-sm font-semibold text-gray-900">
                   {incident.title}

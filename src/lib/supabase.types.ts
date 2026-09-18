@@ -14,6 +14,10 @@ export interface Database {
           dpi: string | null
           phone: string | null
           address: string | null
+          consent_version: string | null
+          consent_accepted_at: string | null
+          anonymized_at: string | null
+          deactivation_requested_at: string | null
         }
         Insert: {
           id: string
@@ -24,6 +28,10 @@ export interface Database {
           dpi?: string | null
           phone?: string | null
           address?: string | null
+          consent_version?: string | null
+          consent_accepted_at?: string | null
+          anonymized_at?: string | null
+          deactivation_requested_at?: string | null
         }
         Update: {
           id?: string
@@ -34,6 +42,10 @@ export interface Database {
           dpi?: string | null
           phone?: string | null
           address?: string | null
+          consent_version?: string | null
+          consent_accepted_at?: string | null
+          anonymized_at?: string | null
+          deactivation_requested_at?: string | null
         }
         Relationships: []
       }
@@ -57,6 +69,13 @@ export interface Database {
           dependency: string | null
           call_type_code: number | null
           call_type_label: string | null
+          ticket_number: string | null
+          discarded_at: string | null
+          discarded_by: string | null
+          discard_reason: string | null
+          discard_note: string | null
+          image_path: string | null
+          resolution_image_path: string | null
         }
         Insert: {
           id?: string
@@ -77,6 +96,13 @@ export interface Database {
           dependency?: string | null
           call_type_code?: number | null
           call_type_label?: string | null
+          ticket_number?: string | null
+          discarded_at?: string | null
+          discarded_by?: string | null
+          discard_reason?: string | null
+          discard_note?: string | null
+          image_path?: string | null
+          resolution_image_path?: string | null
         }
         Update: {
           id?: string
@@ -97,6 +123,67 @@ export interface Database {
           dependency?: string | null
           call_type_code?: number | null
           call_type_label?: string | null
+          ticket_number?: string | null
+          discarded_at?: string | null
+          discarded_by?: string | null
+          discard_reason?: string | null
+          discard_note?: string | null
+          image_path?: string | null
+          resolution_image_path?: string | null
+        }
+        Relationships: []
+      }
+      incident_audit_events: {
+        Row: {
+          id: number
+          incident_id: string
+          actor_id: string | null
+          action: string
+          reason: string | null
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          incident_id: string
+          actor_id?: string | null
+          action: string
+          reason?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          incident_id?: string
+          actor_id?: string | null
+          action?: string
+          reason?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      account_anonymization_requests: {
+        Row: {
+          id: number
+          user_id: string
+          reason: string | null
+          created_at: string
+          processed_at: string | null
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          reason?: string | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          reason?: string | null
+          created_at?: string
+          processed_at?: string | null
         }
         Relationships: []
       }
@@ -194,6 +281,24 @@ export interface Database {
       unpublish_expired_wall_posts: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      discard_incidents: {
+        Args: {
+          incident_ids: string[]
+          reason: string
+          note?: string | null
+        }
+        Returns: number
+      }
+      restore_incidents: {
+        Args: {
+          incident_ids: string[]
+        }
+        Returns: number
+      }
+      anonymize_citizen_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: Record<string, never>

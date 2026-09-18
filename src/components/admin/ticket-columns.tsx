@@ -10,10 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { formatTicketNumber } from "@/lib/ticket-number"
 import type { IncidentStatus } from "@/lib/supabase.types"
 
 export interface AdminIncident {
   id: string
+  ticket_number?: string | null
   title: string
   category: string
   dependency: string | null
@@ -64,11 +66,11 @@ export function getTicketColumns({
 }: TicketColumnsOptions): ColumnDef<AdminIncident>[] {
   return [
     {
-      accessorKey: "id",
-      header: "ID",
+      accessorKey: "ticket_number",
+      header: "Folio",
       cell: ({ row }) => (
         <span className="font-medium" title={row.original.id}>
-          {row.original.id.slice(0, 8)}
+          {formatTicketNumber(row.original.ticket_number)}
         </span>
       ),
     },

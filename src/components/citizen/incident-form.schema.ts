@@ -8,24 +8,19 @@ import {
   type IncidentCategory,
   type IncidentDependency,
 } from "@/lib/incident-classification"
+import {
+  FIELD_LIMITS,
+  getImageValidationError,
+  incidentDescriptionSchema,
+  incidentTitleSchema,
+} from "@/lib/validation"
 
 export { INCIDENT_CATEGORIES, INCIDENT_DEPENDENCIES }
 
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const
-const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024
-
 export const incidentFormSchema = z
   .object({
-    title: z
-      .string()
-      .trim()
-      .min(1, "El título es obligatorio.")
-      .max(120, "El título no puede superar 120 caracteres."),
-    description: z
-      .string()
-      .trim()
-      .min(10, "La descripción debe tener al menos 10 caracteres.")
-      .max(1000, "La descripción no puede superar 1000 caracteres."),
+    title: incidentTitleSchema,
+    description: incidentDescriptionSchema,
     category: z.enum(INCIDENT_CATEGORIES, {
       message: "Selecciona una categoría.",
     }),
@@ -42,14 +37,9 @@ export const incidentFormSchema = z
     callTypeLabel: z.string().trim().min(1, "Selecciona el tipo de llamada."),
     photo: z
       .instanceof(File, { message: "El archivo seleccionado no es válido." })
-      .refine(
-        (file) => ACCEPTED_IMAGE_TYPES.includes(file.type as (typeof ACCEPTED_IMAGE_TYPES)[number]),
-        "La fotografía debe ser JPG, PNG o WebP."
-      )
-      .refine(
-        (file) => file.size <= MAX_PHOTO_SIZE_BYTES,
-        "La fotografía no puede superar 5 MB."
-      )
+      .refine((file) => getImageValidationError(file) === null, {
+        message: "La fotografía debe ser JPG, PNG o WEBP y no superar 5 MB.",
+      })
       .optional(),
     latitude: z.number({
       message: "Captura la ubicación del incidente en el mapa.",
@@ -110,3 +100,5 @@ export interface IncidentSubmissionPayload {
   latitude: number
   longitude: number
 }
+
+export const INCIDENT_FIELD_LIMITS = FIELD_LIMITS

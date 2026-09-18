@@ -1,44 +1,68 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 
-import { Button } from "@/components/ui/button"
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton"
+import { PasswordInput } from "@/components/auth/PasswordInput"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
+import { FIELD_LIMITS, emailSchema, loginPasswordSchema } from "@/lib/validation"
+
+const AUTH_INPUT_CLASS =
+  "rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+
+interface LoginFormProps {
+  onForgotPassword: () => void
+}
 
 /**
  * Login form for existing users in citizen/admin modules.
  *
- * Uses Supabase Auth password sign-in and relies on session listeners in the
- * top-level app layout to enforce role-based access boundaries.
- *
  * @component
  * @module Auth
- * @returns {JSX.Element} Password login form with inline error feedback.
  */
-export function LoginForm() {
+export function LoginForm({ onForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [resetMessage, setResetMessage] = useState<string | null>(null)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setErrorMessage(null)
-    setResetMessage(null)
+
+    const parsedEmail = emailSchema.safeParse(email)
+    const parsedPassword = loginPasswordSchema.safeParse(password)
+
+    if (!parsedEmail.success) {
+      setErrorMessage(parsedEmail.error.issues[0]?.message ?? "Correo inválido.")
+      return
+    }
+
+    if (!parsedPassword.success) {
+      setErrorMessage(parsedPassword.error.issues[0]?.message ?? "Contraseña inválida.")
+      return
+    }
+
     setIsSubmitting(true)
 
+    if (!rememberMe) {
+      sessionStorage.setItem("pwa-alcaldia-session-only", "1")
+    } else {
+      sessionStorage.removeItem("pwa-alcaldia-session-only")
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: parsedEmail.data,
+      password: parsedPassword.data,
     })
 
     if (error) {
-      setErrorMessage(toUserFacingError(error))
+      setErrorMessage(toUserFacingError(error, "Correo o contraseña incorrectos."))
       setIsSubmitting(false)
       return
     }
@@ -48,7 +72,6 @@ export function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     setErrorMessage(null)
-    setResetMessage(null)
     setIsGoogleSubmitting(true)
 
     const { error } = await supabase.auth.signInWithOAuth({
@@ -64,27 +87,6 @@ export function LoginForm() {
     }
   }
 
-  const handleForgotPassword = async () => {
-    setErrorMessage(null)
-    setResetMessage(null)
-
-    if (!email.trim()) {
-      setErrorMessage("Ingresa tu correo para recuperar la contraseña.")
-      return
-    }
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: window.location.origin,
-    })
-
-    if (error) {
-      setErrorMessage(toUserFacingError(error))
-      return
-    }
-
-    setResetMessage("Se envió un enlace de recuperación al correo indicado.")
-  }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <div className="space-y-2">
@@ -96,9 +98,10 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           placeholder="ejemplo@correo.com"
+          maxLength={FIELD_LIMITS.email.max}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+          className={AUTH_INPUT_CLASS}
           required
         />
       </div>
@@ -107,36 +110,38 @@ export function LoginForm() {
         <Label htmlFor="login-password" className="text-sm text-gray-600">
           Contraseña
         </Label>
-        <Input
+        <PasswordInput
           id="login-password"
-          type="password"
           autoComplete="current-password"
           placeholder="********"
+          maxLength={FIELD_LIMITS.password.maxChars}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 focus-visible:ring-blue-400 dark:bg-white dark:text-gray-900"
+          className={AUTH_INPUT_CLASS}
           required
         />
       </div>
 
       <div className="flex items-center justify-between text-sm">
         <label className="flex cursor-pointer items-center gap-2 text-gray-600">
-          <input type="checkbox" className="size-4 rounded accent-blue-500" />
-          Recordarme
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(event) => setRememberMe(event.target.checked)}
+            className="size-4 rounded accent-blue-500"
+          />
+          Recordarme en este dispositivo
         </label>
         <button
           type="button"
           className="font-medium text-blue-500 hover:text-blue-700"
-          onClick={() => void handleForgotPassword()}
+          onClick={onForgotPassword}
         >
           ¿Olvidaste tu contraseña?
         </button>
       </div>
 
       {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
-      {resetMessage && (
-        <p className="text-sm text-emerald-700 dark:text-emerald-300">{resetMessage}</p>
-      )}
 
       <Button
         type="submit"

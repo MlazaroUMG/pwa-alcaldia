@@ -1,43 +1,35 @@
 import { z } from "zod"
 
+import {
+  CONSENT_VERSION,
+  dpiSchema,
+  emailSchema,
+  firstNameSchema,
+  lastNameSchema,
+  optionalAddressSchema,
+  passwordSchema,
+  phoneSchema,
+} from "@/lib/validation"
+
 /**
  * Validation schema for new citizen registrations.
  *
- * DPI (Documento Personal de Identificación) and phone are required so the
- * administrative module can verify a citizen's identity when managing their
- * incidents. Address is intentionally optional per project requirements.
+ * DPI and phone remain required so administrators can verify identity.
+ * Address is optional. Consent is persisted with a versioned legal draft.
  */
 export const registerFormSchema = z
   .object({
-    firstName: z
-      .string()
-      .trim()
-      .min(2, "Ingresa al menos 2 caracteres para el nombre.")
-      .max(80, "El nombre no puede superar 80 caracteres."),
-    lastName: z
-      .string()
-      .trim()
-      .min(2, "Ingresa al menos 2 caracteres para el apellido.")
-      .max(80, "El apellido no puede superar 80 caracteres."),
-    email: z.string().trim().email("Ingresa un correo electrónico válido."),
-    password: z
-      .string()
-      .min(8, "La contraseña debe tener al menos 8 caracteres."),
+    firstName: firstNameSchema,
+    lastName: lastNameSchema,
+    email: emailSchema,
+    password: passwordSchema,
     confirmPassword: z.string().min(1, "Confirma tu contraseña."),
-    dpi: z
-      .string()
-      .trim()
-      .regex(/^\d{13}$/, "El DPI debe tener 13 dígitos numéricos."),
-    phone: z
-      .string()
-      .trim()
-      .regex(/^\d{8}$/, "El teléfono debe tener 8 dígitos numéricos."),
-    address: z
-      .string()
-      .trim()
-      .max(200, "La dirección no puede superar 200 caracteres.")
-      .optional()
-      .or(z.literal("")),
+    dpi: dpiSchema,
+    phone: phoneSchema,
+    address: optionalAddressSchema,
+    acceptedTerms: z.boolean().refine((value) => value === true, {
+      message: "Debes aceptar el aviso de privacidad y las reglas de uso.",
+    }),
   })
   .refine((values) => values.password === values.confirmPassword, {
     message: "Las contraseñas no coinciden.",
@@ -45,3 +37,5 @@ export const registerFormSchema = z
   })
 
 export type RegisterFormValues = z.infer<typeof registerFormSchema>
+
+export const REGISTER_CONSENT_VERSION = CONSENT_VERSION

@@ -15,10 +15,6 @@ import {
   markNotificationRead,
   type AppNotification,
 } from "@/lib/notifications"
-import {
-  enablePushNotifications,
-  supportsWebPush,
-} from "@/lib/push-notifications"
 import { cn } from "@/lib/utils"
 
 interface NotificationsMenuProps {
@@ -49,7 +45,6 @@ export function NotificationsMenu({
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [pushMessage, setPushMessage] = useState<string | null>(null)
 
   const loadNotifications = async () => {
     const { notifications: nextNotifications, error } = await fetchUserNotifications()
@@ -91,16 +86,6 @@ export function NotificationsMenu({
     onSelect(notification)
   }
 
-  const handleEnablePush = async () => {
-    setPushMessage(null)
-    try {
-      await enablePushNotifications()
-      setPushMessage("Notificaciones del dispositivo activadas.")
-    } catch (error) {
-      setPushMessage(toUserFacingError(error))
-    }
-  }
-
   return (
     <DropdownMenu
       onOpenChange={(open) => {
@@ -125,7 +110,7 @@ export function NotificationsMenu({
           <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-red-500" />
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="max-h-80 w-80 overflow-y-auto">
         <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {isLoading && (
@@ -172,21 +157,6 @@ export function NotificationsMenu({
             </span>
           </DropdownMenuItem>
         ))}
-        {supportsWebPush() && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => {
-                void handleEnablePush()
-              }}
-            >
-              Activar notificaciones del dispositivo
-            </DropdownMenuItem>
-          </>
-        )}
-        {pushMessage && (
-          <p className="px-2 py-2 text-xs text-muted-foreground">{pushMessage}</p>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

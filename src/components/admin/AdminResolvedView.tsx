@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 
+import { formatTicketNumber } from "@/lib/ticket-number"
+import { SignedPhoto } from "@/components/media/SignedPhoto"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -12,6 +14,10 @@ interface ResolvedIncident {
   call_type_label: string | null
   resolved_at: string | null
   is_public: boolean
+  resolution_summary: string | null
+  resolution_image_url: string | null
+  resolution_image_path: string | null
+  ticket_number: string | null
 }
 
 /**
@@ -31,8 +37,9 @@ export function AdminResolvedView() {
     const loadResolved = async () => {
       const { data } = await supabase
         .from("incidents")
-        .select("id,title,category,dependency,call_type_code,call_type_label,resolved_at,is_public")
+        .select("id,title,category,dependency,call_type_code,call_type_label,resolved_at,is_public,resolution_summary,resolution_image_url,resolution_image_path,ticket_number")
         .eq("status", "Resuelto")
+        .is("discarded_at", null)
         .order("resolved_at", { ascending: false })
 
       setItems((data ?? []) as ResolvedIncident[])
@@ -76,6 +83,9 @@ export function AdminResolvedView() {
             className="flex flex-col gap-3 rounded-lg border bg-background p-4 md:flex-row md:items-center md:justify-between"
           >
             <div>
+              <p className="font-mono text-xs text-muted-foreground">
+                {formatTicketNumber(item.ticket_number)}
+              </p>
               <p className="font-semibold">{item.title}</p>
               <p className="text-sm text-muted-foreground">{item.category}</p>
               <p className="text-xs text-muted-foreground">
@@ -91,6 +101,16 @@ export function AdminResolvedView() {
                   ? new Date(item.resolved_at).toLocaleString()
                   : "Sin fecha de resolución"}
               </p>
+              {(item.resolution_image_path || item.resolution_image_url) && (
+                <SignedPhoto
+                  path={item.resolution_image_path || item.resolution_image_url}
+                  alt={`Resolución de ${item.title}`}
+                  className="mt-3 h-32 w-full rounded-xl object-cover"
+                />
+              )}
+              {item.resolution_summary && (
+                <p className="mt-2 text-sm text-muted-foreground">{item.resolution_summary}</p>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <Badge className="bg-muni-green text-[#0f2f08]">Resuelto</Badge>
