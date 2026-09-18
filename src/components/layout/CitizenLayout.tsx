@@ -16,6 +16,7 @@ import { BrandLogo } from "@/components/layout/BrandLogo"
 import { NotificationsMenu } from "@/components/layout/NotificationsMenu"
 import { ProfileSettingsView } from "@/components/profile/ProfileSettingsView"
 import { UserAvatarMenu } from "@/components/layout/UserAvatarMenu"
+import { SignedPhoto } from "@/components/media/SignedPhoto"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/hooks/use-theme"
 import { cn } from "@/lib/utils"
@@ -183,14 +184,13 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
           onClick={() => onNavigate("wall")}
           className="w-full overflow-hidden rounded-2xl border border-border bg-card text-left dark:border-[#2a278f] dark:bg-[#1e1b7a]"
         >
-          {communityPreview?.resolution_image_url && (
-            <img
-              src={communityPreview.resolution_image_url}
+          {communityPreview?.resolution_image_url ? (
+            <SignedPhoto
+              path={communityPreview.resolution_image_url}
               alt={`Resolución comunitaria de ${communityPreview.category}`}
               className="h-36 w-full object-cover"
             />
-          )}
-          {!communityPreview?.resolution_image_url && (
+          ) : (
             <div className="h-36 bg-gradient-to-br from-green-50 to-emerald-100" />
           )}
           <div className="p-3">

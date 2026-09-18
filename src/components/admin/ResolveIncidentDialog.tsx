@@ -47,7 +47,7 @@ function ResolutionPhotoPreview({ file }: { file: File }) {
     <img
       src={previewUrl}
       alt={`Vista previa de ${file.name}`}
-      className="h-40 w-full rounded-xl object-cover"
+      className="h-32 w-full rounded-xl object-cover"
     />
   )
 }
@@ -129,15 +129,16 @@ export function ResolveIncidentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden">
+        <DialogHeader className="shrink-0 pr-6">
           <DialogTitle>Cerrar incidencia</DialogTitle>
           <DialogDescription>
             Incidencia: <span className="font-medium text-foreground">{incidentTitle}</span>
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
           <div className="space-y-2">
             <Label htmlFor="resolution-photo">Fotografía de resolución</Label>
             <input
@@ -212,8 +213,9 @@ export function ResolveIncidentDialog({
           </div>
 
           {formError && <p className="text-sm text-destructive">{formError}</p>}
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t pt-4">
             <Button
               type="button"
               variant="outline"

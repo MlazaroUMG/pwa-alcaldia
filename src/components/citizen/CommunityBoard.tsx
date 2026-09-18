@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { ArrowLeft, CheckCircle2, UsersRound } from "lucide-react"
 
+import { SignedPhoto } from "@/components/media/SignedPhoto"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -97,11 +98,10 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
             className="overflow-hidden rounded-2xl border border-gray-100 bg-white"
           >
             {item.resolution_image_url ? (
-              <img
-                src={item.resolution_image_url}
+              <SignedPhoto
+                path={item.resolution_image_url}
                 alt={`Resolución publicada de ${item.category}`}
                 className="h-48 w-full object-cover"
-                loading="lazy"
               />
             ) : (
               <div className="flex h-32 w-full items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">

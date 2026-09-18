@@ -12,6 +12,7 @@ import {
 } from "@/components/admin/ResolveIncidentDialog"
 import { SubmitterProfileDialog } from "@/components/admin/SubmitterProfileDialog"
 import { LocationPreviewMap } from "@/components/citizen/LocationPreviewMap"
+import { SignedPhoto } from "@/components/media/SignedPhoto"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -129,9 +130,9 @@ function TicketCard({
       )}
       <p className="mb-3 line-clamp-2 text-xs text-gray-400">{incident.description}</p>
 
-      {incident.image_url && (
-        <img
-          src={incident.image_url}
+      {(incident.image_path || incident.image_url) && (
+        <SignedPhoto
+          path={incident.image_path || incident.image_url}
           alt={`Evidencia de ${incident.title}`}
           className="mb-3 h-28 w-full rounded-lg object-cover"
         />
@@ -232,6 +233,7 @@ export function AdminTicketsBoardView() {
         is_public: false,
         resolution_summary: null,
         resolution_image_url: null,
+        resolution_image_path: null,
       })
       .eq("id", incident.id)
 
@@ -307,6 +309,7 @@ export function AdminTicketsBoardView() {
           is_public: payload.isPublic,
           resolution_summary: payload.resolutionSummary,
           resolution_image_path: uploaded.path,
+          resolution_image_url: uploaded.signedUrl,
         })
         .eq("id", resolvingIncident.id)
 

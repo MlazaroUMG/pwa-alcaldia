@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Clock3, Pencil, Trash2, UsersRound } from "l
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { SignedPhoto } from "@/components/media/SignedPhoto"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -15,6 +16,7 @@ interface WallPost {
   call_type_label: string | null
   resolution_summary: string | null
   resolution_image_url: string | null
+  resolution_image_path: string | null
   resolved_at: string | null
   published_at: string | null
 }
@@ -55,7 +57,7 @@ export function AdminCommunityWallView() {
       const cutoff = new Date(Date.now() - WALL_CUTOFF_MS).toISOString()
       const { data, error } = await supabase
         .from("incidents")
-        .select("id,title,category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolved_at,published_at")
+        .select("id,title,category,dependency,call_type_code,call_type_label,resolution_summary,resolution_image_url,resolution_image_path,resolved_at,published_at")
         .eq("is_public", true)
         .eq("status", "Resuelto")
         .is("discarded_at", null)
@@ -157,9 +159,9 @@ export function AdminCommunityWallView() {
                 key={post.id}
                 className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-[#2a278f] dark:bg-[#1e1b7a]"
               >
-                {post.resolution_image_url ? (
-                  <img
-                    src={post.resolution_image_url}
+                {post.resolution_image_path || post.resolution_image_url ? (
+                  <SignedPhoto
+                    path={post.resolution_image_path || post.resolution_image_url}
                     alt={`Resolución de ${post.category}`}
                     className="h-44 w-full object-cover"
                   />

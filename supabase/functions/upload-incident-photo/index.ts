@@ -138,19 +138,23 @@ Deno.serve(async (request) => {
     return json({ error: "No se pudo guardar la fotografía." }, 500)
   }
 
-  const column = kind === "evidence" ? "image_path" : "resolution_image_path"
+  const { data: signed } = await admin.storage
+    .from("incident-photos")
+    .createSignedUrl(path, 60 * 60 * 24 * 365)
+
+  const pathColumn = kind === "evidence" ? "image_path" : "resolution_image_path"
+  const urlColumn = kind === "evidence" ? "image_url" : "resolution_image_url"
   const { error: updateError } = await admin
     .from("incidents")
-    .update({ [column]: path })
+    .update({
+      [pathColumn]: path,
+      [urlColumn]: signed?.signedUrl ?? null,
+    })
     .eq("id", incidentId)
 
   if (updateError) {
     return json({ error: "La fotografía se subió, pero no se vinculó al reporte." }, 500)
   }
-
-  const { data: signed } = await admin.storage
-    .from("incident-photos")
-    .createSignedUrl(path, 60 * 10)
 
   return json({ path, signedUrl: signed?.signedUrl ?? null })
 })
