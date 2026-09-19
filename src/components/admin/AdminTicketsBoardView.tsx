@@ -24,6 +24,7 @@ import {
   findPossibleDuplicateIds,
   getSuggestedPriority,
 } from "@/lib/duplicate-suggestions"
+import { recordIncidentStatusChange } from "@/lib/incident-audit"
 import { uploadIncidentPhoto } from "@/lib/incident-photos"
 import { toUserFacingError } from "@/lib/network-errors"
 import { supabase } from "@/lib/supabaseClient"
@@ -134,7 +135,7 @@ function TicketCard({
         <SignedPhoto
           path={incident.image_path || incident.image_url}
           alt={`Evidencia de ${incident.title}`}
-          className="mb-3 h-28 w-full rounded-lg object-cover"
+          className="mb-3 max-h-40 w-full rounded-lg bg-neutral-100 object-contain dark:bg-indigo-950"
         />
       )}
 
@@ -242,6 +243,12 @@ export function AdminTicketsBoardView() {
       return
     }
 
+    await recordIncidentStatusChange({
+      incidentId: incident.id,
+      fromStatus: incident.status,
+      toStatus: nextStatus,
+    })
+
     const updatedIncident = { ...incident, status: nextStatus }
     setIncidents((previous) =>
       previous.map((item) => (item.id === incident.id ? updatedIncident : item))
@@ -318,6 +325,12 @@ export function AdminTicketsBoardView() {
         setIsResolving(false)
         return
       }
+
+      await recordIncidentStatusChange({
+        incidentId: resolvingIncident.id,
+        fromStatus: resolvingIncident.status,
+        toStatus: "Resuelto",
+      })
     } catch (error) {
       setIsResolving(false)
       setErrorMessage(toUserFacingError(error, "No se pudo subir la fotografía de resolución."))

@@ -15,6 +15,15 @@
     <meta name="apple-mobile-web-app-title" content="PWA Alcaldia" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>PWA Alcaldia - Gestión de Incidencias</title>
+    <script>
+      try {
+        if (localStorage.getItem("pwa-alcaldia-theme") === "dark") {
+          document.documentElement.classList.add("dark")
+        }
+      } catch (error) {
+        // localStorage puede no estar disponible.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

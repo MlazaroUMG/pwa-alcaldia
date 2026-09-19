@@ -244,7 +244,22 @@ function CitizenHome({ userId, email, onNavigate }: CitizenHomeProps) {
 export function CitizenLayout({ userId, email, onSignOut }: CitizenLayoutProps) {
   const [section, setSection] = useState<CitizenSection>("home")
   const [highlightIncidentId, setHighlightIncidentId] = useState<string | null>(null)
+  const [profile, setProfile] = useState<CitizenProfile | null>(null)
   const { theme, toggleTheme } = useTheme()
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("first_name,last_name")
+        .eq("id", userId)
+        .maybeSingle()
+
+      setProfile((data ?? null) as CitizenProfile | null)
+    }
+
+    void loadProfile()
+  }, [userId])
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[448px] flex-col overflow-x-hidden bg-background text-foreground dark:bg-[#0d0b45] dark:text-gray-100">
@@ -264,7 +279,7 @@ export function CitizenLayout({ userId, email, onSignOut }: CitizenLayoutProps) 
               {theme === "dark" ? (
                 <Sun className="size-4 text-gray-100" />
               ) : (
-                <Moon className="size-4 text-gray-100" />
+                <Moon className="size-4 text-gray-700" />
               )}
             </button>
             <NotificationsMenu
@@ -281,6 +296,8 @@ export function CitizenLayout({ userId, email, onSignOut }: CitizenLayoutProps) 
             />
             <UserAvatarMenu
               email={email}
+              firstName={profile?.first_name}
+              lastName={profile?.last_name}
               onSignOut={onSignOut}
               onOpenProfile={() => setSection("profile")}
             />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet"
+import { MapContainer, Marker, Polygon, TileLayer, useMapEvents } from "react-leaflet"
 import L from "leaflet"
 import { LocateFixed } from "lucide-react"
 import markerIconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png"
@@ -7,6 +7,13 @@ import markerIconUrl from "leaflet/dist/images/marker-icon.png"
 import markerShadowUrl from "leaflet/dist/images/marker-shadow.png"
 
 import { Button } from "@/components/ui/button"
+import {
+  GEOFENCE_OUTSIDE_MESSAGE,
+  PINARES_DEL_NORTE_CENTER,
+  getPinaresLeafletRing,
+  getPinaresMaxBounds,
+  isWithinPinaresDelNorte,
+} from "@/lib/geo/pinares-del-norte"
 import "leaflet/dist/leaflet.css"
 
 // Bundlers do not resolve Leaflet's default marker image paths automatically;
@@ -21,9 +28,10 @@ const defaultMarkerIcon = L.icon({
   shadowSize: [41, 41],
 })
 
-/** Approximate center of Zona 18, Ciudad de Guatemala, used when no GPS fix is available yet. */
-const DEFAULT_CENTER: [number, number] = [14.662, -90.4636]
+const DEFAULT_CENTER: [number, number] = PINARES_DEL_NORTE_CENTER
 const DEFAULT_ZOOM = 15
+const MAX_BOUNDS = getPinaresMaxBounds()
+const GEOFENCE_RING = getPinaresLeafletRing()
 
 export interface LocationCoordinates {
   latitude: number
@@ -87,6 +95,17 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
       : null
   )
 
+  const acceptIfInside = (coordinates: LocationCoordinates) => {
+    if (!isWithinPinaresDelNorte(coordinates.latitude, coordinates.longitude)) {
+      setLocationError(GEOFENCE_OUTSIDE_MESSAGE)
+      return false
+    }
+
+    setLocationError(null)
+    onChange(coordinates)
+    return true
+  }
+
   useEffect(() => {
     if (value || !navigator.geolocation) {
       return
@@ -94,7 +113,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        onChange({
+        acceptIfInside({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         })
@@ -122,7 +141,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        onChange({
+        acceptIfInside({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         })
@@ -146,6 +165,8 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
         <MapContainer
           center={center}
           zoom={DEFAULT_ZOOM}
+          maxBounds={MAX_BOUNDS}
+          maxBoundsViscosity={1}
           className="h-full w-full"
           key={value ? `${value.latitude}-${value.longitude}` : "default"}
         >
@@ -153,7 +174,16 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <MapClickHandler onSelect={onChange} />
+          <Polygon
+            positions={GEOFENCE_RING}
+            pathOptions={{
+              color: "#1700a5",
+              weight: 2,
+              fillColor: "#72c5e4",
+              fillOpacity: 0.12,
+            }}
+          />
+          <MapClickHandler onSelect={acceptIfInside} />
           {value && (
             <Marker
               position={[value.latitude, value.longitude]}
@@ -163,10 +193,14 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
                 dragend: (event) => {
                   const marker = event.target as L.Marker
                   const position = marker.getLatLng()
-                  onChange({
+                  const accepted = acceptIfInside({
                     latitude: position.lat,
                     longitude: position.lng,
                   })
+
+                  if (!accepted && value) {
+                    marker.setLatLng([value.latitude, value.longitude])
+                  }
                 },
               }}
             />
@@ -196,7 +230,8 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
 
       <p className="text-xs text-muted-foreground">
         Toca el mapa o arrastra el marcador para ajustar el punto exacto del
-        incidente.
+        incidente. Solo se aceptan puntos dentro de Pinares del Norte, Zona 18,
+        Distrito IV.
       </p>
 
       {locationError && (

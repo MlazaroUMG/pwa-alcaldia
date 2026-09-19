@@ -163,7 +163,7 @@ export function AdminCommunityWallView() {
                   <SignedPhoto
                     path={post.resolution_image_path || post.resolution_image_url}
                     alt={`Resolución de ${post.category}`}
-                    className="h-44 w-full object-cover"
+                    className="max-h-80 w-full bg-neutral-100 object-contain dark:bg-indigo-950"
                   />
                 ) : (
                   <div className="flex h-44 w-full items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">

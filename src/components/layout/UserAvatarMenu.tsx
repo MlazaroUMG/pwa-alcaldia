@@ -8,9 +8,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { getAvatarInitials } from "@/lib/avatar-initials"
 
 interface UserAvatarMenuProps {
   email?: string
+  firstName?: string | null
+  lastName?: string | null
   onSignOut: () => void
   /** Opens the profile view when provided; hidden shells may omit this. */
   onOpenProfile?: () => void
@@ -25,8 +28,14 @@ interface UserAvatarMenuProps {
  * @module Layout
  * @returns {JSX.Element} Compact avatar trigger with dropdown actions.
  */
-export function UserAvatarMenu({ email, onSignOut, onOpenProfile }: UserAvatarMenuProps) {
-  const initials = email?.slice(0, 2).toUpperCase() ?? "US"
+export function UserAvatarMenu({
+  email,
+  firstName,
+  lastName,
+  onSignOut,
+  onOpenProfile,
+}: UserAvatarMenuProps) {
+  const initials = getAvatarInitials(firstName, lastName, email)
 
   return (
     <DropdownMenu>

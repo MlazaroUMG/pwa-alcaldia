@@ -191,7 +191,7 @@ export function MyCasesView({
               <SignedPhoto
                 path={selectedCase.resolution_image_path || selectedCase.resolution_image_url}
                 alt={`Resolución de ${selectedCase.title}`}
-                className="mb-3 h-36 w-full rounded-xl object-cover"
+                className="mb-3 max-h-80 w-full rounded-xl bg-neutral-100 object-contain"
               />
             ) : null}
             <p className="text-sm text-green-700">
@@ -209,7 +209,7 @@ export function MyCasesView({
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 flex items-center gap-1.5 text-sm text-indigo-300 hover:text-gray-100"
+        className="mb-4 flex items-center gap-1.5 text-sm text-gray-700 hover:text-gray-900 dark:text-indigo-300 dark:hover:text-gray-100"
       >
         <ArrowLeft className="size-4" />
         Volver
