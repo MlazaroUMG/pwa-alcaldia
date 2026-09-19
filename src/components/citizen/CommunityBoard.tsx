@@ -101,7 +101,7 @@ export function CommunityBoard({ onBack }: CommunityBoardProps) {
               <SignedPhoto
                 path={item.resolution_image_url}
                 alt={`Resolución publicada de ${item.category}`}
-                className="h-48 w-full object-cover"
+                className="max-h-80 w-full bg-neutral-100 object-contain"
               />
             ) : (
               <div className="flex h-32 w-full items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">

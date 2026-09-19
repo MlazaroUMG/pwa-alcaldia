@@ -351,7 +351,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
           name="dependency"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-indigo-300">
                 Dependencia *
               </FormLabel>
               <Select
@@ -363,7 +363,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
                 }}
               >
                 <FormControl>
-                  <SelectTrigger className="h-14 w-full rounded-xl border-indigo-200 bg-transparent px-4 text-base text-gray-100 focus-visible:ring-indigo-300">
+                  <SelectTrigger className="h-14 w-full rounded-xl border-indigo-200 bg-transparent px-4 text-base text-gray-900 focus-visible:ring-indigo-300 dark:text-gray-100">
                     <SelectValue placeholder="Selecciona la dependencia responsable" />
                   </SelectTrigger>
                 </FormControl>
@@ -385,7 +385,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
           name="callTypeCode"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-indigo-300">
+              <FormLabel className="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-indigo-300">
                 Tipo de llamada *
               </FormLabel>
               <Select
@@ -410,7 +410,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
                 }}
               >
                 <FormControl>
-                  <SelectTrigger className="h-14 w-full rounded-xl border-indigo-200 bg-transparent px-4 text-left text-base text-gray-100 focus-visible:ring-indigo-300 disabled:opacity-60">
+                  <SelectTrigger className="h-14 w-full rounded-xl border-indigo-200 bg-transparent px-4 text-left text-base text-gray-900 focus-visible:ring-indigo-300 disabled:opacity-60 dark:text-gray-100">
                     <SelectValue
                       placeholder={
                         selectedDependency
@@ -502,7 +502,7 @@ export function IncidentSubmissionForm({ userId, onBack }: IncidentSubmissionFor
                       )}
                       <p className="break-all text-sm text-indigo-300">
                         Archivo seleccionado:{" "}
-                        <span className="font-medium text-gray-100">{value.name}</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{value.name}</span>
                       </p>
                     </div>
                   )}

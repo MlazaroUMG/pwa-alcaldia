@@ -9,6 +9,10 @@ import {
   type IncidentDependency,
 } from "@/lib/incident-classification"
 import {
+  GEOFENCE_OUTSIDE_MESSAGE,
+  isWithinPinaresDelNorte,
+} from "@/lib/geo/pinares-del-norte"
+import {
   FIELD_LIMITS,
   getImageValidationError,
   incidentDescriptionSchema,
@@ -83,6 +87,18 @@ export const incidentFormSchema = z
         code: "custom",
         path: ["callTypeCode"],
         message: "El tipo de llamada seleccionado no es válido.",
+      })
+    }
+
+    if (
+      typeof values.latitude === "number" &&
+      typeof values.longitude === "number" &&
+      !isWithinPinaresDelNorte(values.latitude, values.longitude)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["latitude"],
+        message: GEOFENCE_OUTSIDE_MESSAGE,
       })
     }
   })

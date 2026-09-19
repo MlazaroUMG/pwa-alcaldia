@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import type { Session, User } from "@supabase/supabase-js"
 
+import { AuthLightShell } from "@/components/auth/AuthLightShell"
 import { CompleteGoogleProfileForm } from "@/components/auth/CompleteGoogleProfileForm"
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm"
 import {
@@ -104,40 +105,47 @@ function AuthPage() {
 
   if (screen === "forgot-password") {
     return (
-      <main className="min-h-screen bg-[#edf3fb] px-4 py-6">
-        <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center">
-          <section className="w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <ForgotPasswordForm onBack={() => setScreen("auth")} />
-          </section>
-        </div>
-      </main>
+      <AuthLightShell>
+        <main className="min-h-screen bg-[#edf3fb] px-4 py-6 dark:bg-[#edf3fb]">
+          <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center">
+            <section className="w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:bg-white">
+              <ForgotPasswordForm onBack={() => setScreen("auth")} />
+            </section>
+          </div>
+        </main>
+      </AuthLightShell>
     )
   }
 
   if (screen === "privacy") {
     return (
-      <LegalDocumentView
-        title="Aviso de privacidad"
-        version="2026-09-16"
-        body={PRIVACY_NOTICE_PARAGRAPHS}
-        onBack={() => setScreen("auth")}
-      />
+      <AuthLightShell>
+        <LegalDocumentView
+          title="Aviso de privacidad"
+          version="2026-09-16"
+          body={PRIVACY_NOTICE_PARAGRAPHS}
+          onBack={() => setScreen("auth")}
+        />
+      </AuthLightShell>
     )
   }
 
   if (screen === "usage") {
     return (
-      <LegalDocumentView
-        title="Reglas de uso"
-        version="2026-09-16"
-        body={USAGE_RULES_PARAGRAPHS}
-        onBack={() => setScreen("auth")}
-      />
+      <AuthLightShell>
+        <LegalDocumentView
+          title="Reglas de uso"
+          version="2026-09-16"
+          body={USAGE_RULES_PARAGRAPHS}
+          onBack={() => setScreen("auth")}
+        />
+      </AuthLightShell>
     )
   }
 
   return (
-    <main className="min-h-screen bg-[#edf3fb] px-4 py-6 sm:px-6 lg:px-8">
+    <AuthLightShell>
+    <main className="min-h-screen bg-[#edf3fb] px-4 py-6 sm:px-6 lg:px-8 dark:bg-[#edf3fb]">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center justify-center">
         <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl md:grid-cols-2">
           <section className="flex flex-col px-6 py-8 sm:px-8 md:px-10 lg:px-12">
@@ -266,6 +274,7 @@ function AuthPage() {
         </div>
       </div>
     </main>
+    </AuthLightShell>
   )
 }
 
@@ -410,21 +419,25 @@ function App() {
           )}
 
           {!isLoadingSession && isPasswordRecovery && (
-            <ResetPasswordForm onCompleted={() => setIsPasswordRecovery(false)} />
+            <AuthLightShell>
+              <ResetPasswordForm onCompleted={() => setIsPasswordRecovery(false)} />
+            </AuthLightShell>
           )}
 
           {!isLoadingSession &&
             session &&
             !isPasswordRecovery &&
             requiresCompleteProfile && (
-              <CompleteGoogleProfileForm
-                userId={session.user.id}
-                email={session.user.email}
-                onCompleted={() => setRequiresCompleteProfile(false)}
-                onSignOut={() => void handleSignOut()}
-                onOpenPrivacy={() => setLegalOverlay("privacy")}
-                onOpenUsage={() => setLegalOverlay("usage")}
-              />
+              <AuthLightShell>
+                <CompleteGoogleProfileForm
+                  userId={session.user.id}
+                  email={session.user.email}
+                  onCompleted={() => setRequiresCompleteProfile(false)}
+                  onSignOut={() => void handleSignOut()}
+                  onOpenPrivacy={() => setLegalOverlay("privacy")}
+                  onOpenUsage={() => setLegalOverlay("usage")}
+                />
+              </AuthLightShell>
             )}
 
           {!isLoadingSession &&
@@ -442,6 +455,7 @@ function App() {
               )}
               {!roleError && role === "admin" && (
                 <AdminLayout
+                  userId={session.user.id}
                   email={session.user.email}
                   onSignOut={() => void handleSignOut()}
                 />
@@ -450,7 +464,7 @@ function App() {
           )}
 
           {legalOverlay && (
-            <div className="fixed inset-0 z-50 overflow-y-auto bg-background">
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-[#edf3fb] text-gray-900 dark:bg-[#edf3fb] dark:text-gray-900">
               <LegalDocumentView
                 title={legalOverlay === "privacy" ? "Aviso de privacidad" : "Reglas de uso"}
                 version="2026-09-16"

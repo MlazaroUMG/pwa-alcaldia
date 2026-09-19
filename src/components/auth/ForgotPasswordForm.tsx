@@ -58,10 +58,10 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
     <Form {...form}>
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         <div className="space-y-1">
-          <h1 className="font-display text-2xl font-semibold text-foreground">
+          <h1 className="font-display text-2xl font-semibold text-gray-950">
             Recuperar contraseña
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             Ingresa el correo de tu cuenta. No reutilizamos el correo del inicio de sesión.
           </p>
         </div>
@@ -71,9 +71,15 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Correo electrónico</FormLabel>
+              <FormLabel className="text-gray-700">Correo electrónico</FormLabel>
               <FormControl>
-                <Input type="email" autoComplete="email" maxLength={254} {...field} />
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  maxLength={254}
+                  className="rounded-xl border-gray-200 bg-white px-4 py-6 text-sm text-gray-900 placeholder:text-gray-300 dark:bg-white dark:text-gray-900"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -81,16 +87,20 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
         />
 
         {form.formState.errors.root && (
-          <p className="text-sm text-muted-foreground">{form.formState.errors.root.message}</p>
+          <p className="text-sm text-gray-600">{form.formState.errors.root.message}</p>
         )}
 
-        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          className="w-full rounded-xl bg-blue-500 py-6 font-semibold text-white hover:bg-blue-600"
+          disabled={form.formState.isSubmitting}
+        >
           {form.formState.isSubmitting ? "Enviando..." : "Enviar enlace"}
         </Button>
         <button
           type="button"
           onClick={onBack}
-          className="w-full text-sm text-primary underline-offset-4 hover:underline"
+          className="w-full text-sm text-blue-600 underline-offset-4 hover:underline"
         >
           Volver al inicio de sesión
         </button>

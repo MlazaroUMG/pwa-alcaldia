@@ -94,7 +94,7 @@ export function ResetPasswordForm({ onCompleted }: ResetPasswordFormProps) {
                 required
               />
               {passwordHints.length > 0 && (
-                <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+                <ul className="list-disc space-y-0.5 pl-4 text-xs text-gray-500">
                   {passwordHints.map((hint) => (
                     <li key={hint}>{hint}</li>
                   ))}
@@ -117,7 +117,7 @@ export function ResetPasswordForm({ onCompleted }: ResetPasswordFormProps) {
               />
             </div>
 
-            {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+            {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
             <Button
               type="submit"

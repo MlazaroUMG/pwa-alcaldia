@@ -1,5 +1,4 @@
 import type { IncidentSubmissionPayload } from "@/components/citizen/incident-form.schema"
-import { supabase } from "@/lib/supabaseClient"
 
 export interface DuplicateSuggestion {
   category: string
@@ -13,6 +12,9 @@ export interface DuplicateSuggestion {
 export async function fetchDuplicateSuggestions(
   incident: IncidentSubmissionPayload
 ) {
+  // El cliente se carga aquí, no al importar el módulo: las pruebas de
+  // prioridad no deben exigir VITE_SUPABASE_* en GitHub Actions.
+  const { supabase } = await import("@/lib/supabaseClient")
   const { data, error } = await supabase.rpc("suggest_incident_duplicates", {
     input_latitude: incident.latitude,
     input_longitude: incident.longitude,

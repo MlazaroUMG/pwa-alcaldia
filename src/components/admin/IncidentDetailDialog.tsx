@@ -121,7 +121,7 @@ export function IncidentDetailDialog({
               <SignedPhoto
                 path={incident.image_path || incident.image_url}
                 alt={`Evidencia de ${incident.title}`}
-                className="h-56 w-full rounded-xl object-cover"
+                className="max-h-80 w-full rounded-xl bg-neutral-100 object-contain dark:bg-indigo-950"
               />
             )}
             <div className="grid gap-3 sm:grid-cols-2">

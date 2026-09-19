@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { ComponentType } from "react"
 import {
   CheckCheck,
@@ -22,6 +22,8 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { UserAvatarMenu } from "@/components/layout/UserAvatarMenu"
 import { ProfileSettingsView } from "@/components/profile/ProfileSettingsView"
 import { Input } from "@/components/ui/input"
+import { getAvatarInitials } from "@/lib/avatar-initials"
+import { supabase } from "@/lib/supabaseClient"
 
 type AdminSection =
   | "dashboard"
@@ -33,8 +35,14 @@ type AdminSection =
   | "profile"
 
 interface AdminLayoutProps {
+  userId?: string
   email?: string
   onSignOut: () => void
+}
+
+interface AdminProfile {
+  first_name: string | null
+  last_name: string | null
 }
 
 interface AdminNavItem {
@@ -65,10 +73,31 @@ const NAV_ITEMS: AdminNavItem[] = [
  * @module Layout
  * @returns {JSX.Element} Sidebar-based admin workspace with contextual tools.
  */
-export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
+export function AdminLayout({ userId, email, onSignOut }: AdminLayoutProps) {
   const [section, setSection] = useState<AdminSection>("dashboard")
   const [searchQuery, setSearchQuery] = useState("")
   const [highlightIncidentId, setHighlightIncidentId] = useState<string | null>(null)
+  const [profile, setProfile] = useState<AdminProfile | null>(null)
+
+  useEffect(() => {
+    if (!userId) {
+      return
+    }
+
+    const loadProfile = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("first_name,last_name")
+        .eq("id", userId)
+        .maybeSingle()
+
+      setProfile((data ?? null) as AdminProfile | null)
+    }
+
+    void loadProfile()
+  }, [userId])
+
+  const initials = getAvatarInitials(profile?.first_name, profile?.last_name, email)
 
   const showSearchBar = section === "inbox"
 
@@ -104,7 +133,7 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
 
         <div className="flex h-16 shrink-0 items-center justify-center">
           <div className="flex size-9 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
-            {email?.charAt(0).toUpperCase() ?? "A"}
+            {initials}
           </div>
         </div>
       </aside>
@@ -148,6 +177,8 @@ export function AdminLayout({ email, onSignOut }: AdminLayoutProps) {
             <ThemeToggle />
             <UserAvatarMenu
               email={email}
+              firstName={profile?.first_name}
+              lastName={profile?.last_name}
               onSignOut={onSignOut}
               onOpenProfile={() => setSection("profile")}
             />
